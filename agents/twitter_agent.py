@@ -1,56 +1,180 @@
 import os
-import requests
 from dotenv import load_dotenv
-from typing import List
+from typing import Dict, Any
 import tweepy
+import vertexai
+from vertexai.generative_models import (
+    GenerativeModel,
+    Tool,
+    FunctionDeclaration,
+    ToolConfig,
+    Part,
+)
 
 load_dotenv()
 
 BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN")
 
 
-def fetch_twitter_posts(location: str, topic: str, limit: int = 5) -> list:
+def fetch_twitter_posts(location: str, topic: str, limit: int = 5) -> Dict[str, Any]:
     """
-    Uses Twitter API v2 to search recent tweets based on location + topic.
+    Uses Twitter API v2 via Tweepy to search recent tweets based on location + topic.
+
+    Args:
+        location (str): The geographical location to search for tweets (e.g., "New Delhi").
+        topic (str): The topic or keyword to search for (e.g., "cricket").
+        limit (int): The maximum number of tweets to fetch (default is 5, max 100).
+
+    Returns:
+        dict: A dictionary containing a list of tweets with 'text', 'id', 'created_at', 'author_id'.
+              Returns a dictionary with an 'error' key if an error occurs.
     """
-    headers = {"Authorization": f"Bearer {BEARER_TOKEN}"}
+    if not BEARER_TOKEN:
+        print("[TwitterAgent] Error: TWITTER_BEARER_TOKEN not set.")
+        return {"error": "Twitter API token not configured."}
 
-    query = f"{location} {topic} -is:retweet lang:en"
-    url = "https://api.twitter.com/2/tweets/search/recent"
+    client = tweepy.Client(BEARER_TOKEN)
 
-    params = {
-        "query": query,
-        "max_results": min(limit, 100),
-        "tweet.fields": "created_at,text,author_id",
-    }
+    actual_limit = min(limit, 100) # test carefully tho WARNING: tweepy only offers 100 searches
+
+    query = f"{location} {topic} -is:retweet lang:en"  # Build the query string
 
     try:
-        response = requests.get(url, headers=headers, params=params, timeout=10)
-        response.raise_for_status()
-        tweets = response.json().get("data", [])
+        # Use tweepy's search_recent_tweets method
+        # tweet_fields allows you to specify what additional fields you want
+        # user_fields is for user information if you were fetching users
+        response = client.search_recent_tweets(
+            query,
+            max_results=actual_limit,
+            tweet_fields=[
+                "created_at",
+                "author_id",
+            ],  # Request author_id to link tweets to users later if needed
+            expansions=["author_id"],  # To expand user data in the 'includes' field
+        )
 
-        return [
-            {
-                "text": tweet["text"],
-                "id": tweet["id"],
-                "created_at": tweet["created_at"],
+        tweets_data = response.data  # The actual list of Tweet objects FIX: data doesnt exist for response
+        includes_data = response.includes  # Contains expanded data, e.g, user objects FIX: no includes either
+
+        processed_tweets = []
+        if tweets_data:
+            # Create a dictionary to quickly look up user info by author_id
+            users_by_id = {
+                user["id"]: user["username"] for user in includes_data.get("users", [])
             }
-            for tweet in tweets
-        ]
 
-    except requests.exceptions.HTTPError as errh:
-        print(f"[TwitterAgent] HTTP Error: {errh}")
-        print(f"Response content: {response.text}")
-        return []
-    except requests.exceptions.ConnectionError as errc:
-        print(f"[TwitterAgent] Error Connecting: {errc}")
-        return []
-    except requests.exceptions.Timeout as errt:
-        print(f"[TwitterAgent] Timeout Error: {errt}")
-        return []
-    except requests.exceptions.RequestException as err:
-        print(f"[TwitterAgent] Error: {err}")
-        return []
+            for tweet in tweets_data:
+                processed_tweets.append(
+                    {
+                        "text": tweet.text,
+                        "id": tweet.id,
+                        "created_at": str(
+                            tweet.created_at
+                            ),  # WARNING: Convert datetime object to string
+                        "author_id": tweet.author_id,
+                        "author_username": users_by_id.get(
+                            tweet.author_id, "N/A"
+                        ),  # Get username
+                    }
+                )
+        return {
+            "tweets": processed_tweets
+        }
+
+    except tweepy.TweepyException as e:
+        error_msg = f"Tweepy API Error: {e}"
+        print(f"[TwitterAgent] {error_msg}")
+        return {"error": error_msg}
     except Exception as e:
-        print("[TwitterAgent] Error:", e)
-        return []
+        error_msg = f"An unexpected error occurred: {e}"
+        print(f"[TwitterAgent] {error_msg}")
+        return {"error": error_msg}
+
+
+fetch_twitter_posts_tool_declaration = FunctionDeclaration(
+    name="fetch_twitter_posts",
+    description="Searches for recent posts on Twitter based on a location and a topic.",
+    parameters={
+        "type": "OBJECT",
+        "properties": {
+            "location": {
+                "type": "STRING",
+                "description": "The geographical location to search for tweets (e.g., 'New Delhi', 'Gurugram').",
+            },
+            "topic": {
+                "type": "STRING",
+                "description": "The topic or keyword to search for (e.g., 'weather', 'traffic', 'sports').",
+            },
+            "limit": {
+                "type": "INTEGER",
+                "description": "The maximum number of tweets to fetch (optional, default is 5, max 100).",
+            },
+        },
+        "required": ["location", "topic"],
+    },
+)
+
+TWITTER_TOOLS = [
+    Tool(function_declarations=[fetch_twitter_posts_tool_declaration]),
+]
+
+TOOL_FUNCTIONS = {
+    "fetch_twitter_posts": fetch_twitter_posts,
+}
+
+
+# Wrapper class
+class TwitterAgent:
+    def __init__(self, project_id: str, region: str):
+        vertexai.init(project=project_id, location=region)
+        self.model = GenerativeModel(
+            "gemini-1.5-flash",
+            tools=TWITTER_TOOLS,
+            tool_config=ToolConfig(
+                function_calling_config=ToolConfig.FunctionCallingConfig(
+                    mode=ToolConfig.FunctionCallingConfig.Mode.AUTO,
+                ),
+            ),
+            system_instruction=[
+                "You are a Twitter search assistant. Your primary goal is to find recent tweets.",
+                "Always use the 'fetch_twitter_posts' tool when asked to find tweets.",
+                "Summarize the retrieved tweets concisely, including the author's username if available.",
+                "If the tool returns an error, inform the user about the error clearly.",
+            ],
+        )
+        self.chat_session = self.model.start_chat()
+
+    def process_query(self, query: str) -> str:
+        """Processes a user query and returns a response, potentially using the Twitter tool."""
+        print(f"DEBUG: TwitterAgent received query: {query}")
+        response = self.chat_session.send_message(query)
+
+        if response.candidates and response.candidates[0].function_calls:
+            function_calls = response.candidates[0].function_calls
+            tool_outputs = []
+            for function_call in function_calls:
+                function_name = function_call.name
+                function_args = {k: v for k, v in function_call.args.items()}
+
+                if function_name in TOOL_FUNCTIONS:
+                    print(
+                        f"DEBUG: TwitterAgent calling tool: {function_name} with args: {function_args}"
+                    )
+                    result = TOOL_FUNCTIONS[function_name](**function_args)
+                    print(f"DEBUG: Tool output received: {result}")
+                    tool_outputs.append(
+                        Part.from_function_response(name=function_name, response=result)
+                    )
+                else:
+                    error_msg = f"TwitterAgent: Unknown tool requested: {function_name}"
+                    print(f"DEBUG: {error_msg}")
+                    tool_outputs.append(
+                        Part.from_function_response(
+                            name=function_name, response={"error": error_msg}
+                        )
+                    )
+
+            final_response = self.chat_session.send_message(tool_outputs)
+            return final_response.text
+        else:
+            return response.text
