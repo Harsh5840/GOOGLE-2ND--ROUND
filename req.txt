@@ -7,3 +7,5 @@ requests
 tiktoken
 google-cloud-firestore
 praw
+tweepy
+googlemaps
