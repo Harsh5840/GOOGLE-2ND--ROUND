@@ -1,32 +1,12 @@
 import os
 import requests
 from dotenv import load_dotenv
+from typing import List
+import tweepy
 
 load_dotenv()
 
 BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN")
-
-import tweepy
-from typing import List
-
-
-def get_tweets(
-    query: str,
-    api_key: str,
-    api_secret: str,
-    access_token: str,
-    access_token_secret: str,
-) -> List[str]:
-    """Fetch tweets matching a query."""
-    try:
-        auth = tweepy.OAuthHandler(
-            api_key, api_secret, access_token, access_token_secret
-        )
-        api = tweepy.API(auth)
-        tweets = api.search_tweets(q=query, lang="en", count=10)
-        return [tweet.text for tweet in tweets]
-    except Exception as e:
-        return [f"Twitter API error: {e}"]
 
 
 def fetch_twitter_posts(location: str, topic: str, limit: int = 5) -> list:
@@ -58,6 +38,19 @@ def fetch_twitter_posts(location: str, topic: str, limit: int = 5) -> list:
             for tweet in tweets
         ]
 
+    except requests.exceptions.HTTPError as errh:
+        print(f"[TwitterAgent] HTTP Error: {errh}")
+        print(f"Response content: {response.text}")
+        return []
+    except requests.exceptions.ConnectionError as errc:
+        print(f"[TwitterAgent] Error Connecting: {errc}")
+        return []
+    except requests.exceptions.Timeout as errt:
+        print(f"[TwitterAgent] Timeout Error: {errt}")
+        return []
+    except requests.exceptions.RequestException as err:
+        print(f"[TwitterAgent] Error: {err}")
+        return []
     except Exception as e:
         print("[TwitterAgent] Error:", e)
         return []
