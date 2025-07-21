@@ -1,57 +1,42 @@
 # agents/intent_extractor/agent.py
 
-from vertexai.language_models import ChatModel
-import os
+from vertexai.generative_models import GenerativeModel
 import re
 
-# Load Gemini model (Vertex AI must be initialized by caller)
-chat_model = ChatModel.from_pretrained("chat-bison")
+gemini = GenerativeModel("gemini-1.5-pro")
 
 def extract_intent(message: str) -> dict:
-    """
-    Uses Gemini to extract structured intent and entities from the user's query.
-    Example:
-        Input: "Any events in Indiranagar tonight?"
-        Output: {
-            "intent": "GET_EVENTS",
-            "entities": { "location": "Indiranagar", "date": "tonight" }
-        }
-    """
     prompt = f"""
-You are an intent extraction agent for a city chatbot.
+You are an intent extractor for a smart city assistant.
+Given a user's message, extract:
+- `intent`: One word, e.g., 'traffic', 'event', 'power', 'weather', etc.
+- `entities`: Dict with keys like 'location', 'time', or 'topic' if mentioned.
 
-Extract:
-1. The INTENT (e.g., GET_EVENTS, CHECK_TRAFFIC, FIND_PLACES, etc.)
-2. The ENTITIES in JSON (e.g., location, date, category, etc.)
-
-Respond in this JSON format only:
+Respond ONLY in JSON like:
 {{
-  "intent": "INTENT_NAME",
+  "intent": "event",
   "entities": {{
-    "location": "string",
-    "date": "string",
-    "category": "string"
+    "location": "HSR Layout",
+    "topic": "flash mob"
   }}
 }}
 
-User Query:
-"{message}"
+User: "{message}"
 """
 
-    chat = chat_model.start_chat()
-    response = chat.send_message(prompt)
+    try:
+        response = gemini.generate_content(prompt)
+        text = response.text.strip()
 
-    # Extract JSON using regex (safe fallback)
-    match = re.search(r'\{.*\}', response.text, re.DOTALL)
-    if match:
-        try:
-            import json
-            return json.loads(match.group())
-        except Exception as e:
-            print("Error parsing JSON:", e)
+        # Naive safety net if Gemini wraps in markdown
+        json_match = re.search(r'\{[\s\S]+\}', text)
+        if json_match:
+            return eval(json_match.group(0))  # Quick dev shortcut
 
-    # Fallback
+    except Exception as e:
+        print("[IntentExtractor] Error:", e)
+
     return {
-        "intent": "UNKNOWN",
+        "intent": "unknown",
         "entities": {}
     }

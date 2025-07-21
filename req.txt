@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+google-cloud-aiplatform
+firebase-admin
+python-dotenv
+requests
+tiktoken
+google-cloud-firestore

@@ -1,18 +1,25 @@
 # apps/orchestrator/main.py
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from pydantic import BaseModel
-import uvicorn
-import os
 from google.cloud import aiplatform
-from agents.intent_extractor.agent import extract_intent
+import os
 
-# Initialize Vertex AI (make sure GOOGLE_APPLICATION_CREDENTIALS is set)
-aiplatform.init(project=os.getenv("GCP_PROJECT_ID"), location=os.getenv("GCP_REGION"))
+from agents.intent_extractor.agent import extract_intent
+from agents.tool_caller import fetch_reddit_posts
+from agents.twitter_agent import fetch_twitter_posts
+from agents.firestore_agent import fetch_firestore_reports
+from agents.rag_search import get_rag_fallback
+from agents.response_agent import generate_final_response
+
+# Initialize Vertex AI
+aiplatform.init(
+    project=os.getenv("GCP_PROJECT_ID"),
+    location=os.getenv("GCP_REGION")
+)
 
 app = FastAPI()
 
-# Input/Output schema
 class UserQuery(BaseModel):
     user_id: str
     message: str
@@ -26,17 +33,37 @@ class BotResponse(BaseModel):
 async def chat_router(query: UserQuery):
     print(f"[Orchestrator] Received: {query.message}")
 
-    # Step 1: Extract intent and entities
+    # Step 1: Extract intent/entities
     intent_data = extract_intent(query.message)
+    intent = intent_data["intent"]
+    entities = intent_data["entities"]
+    location = entities.get("location", "")
+    topic = entities.get("topic", intent)
 
-    # Step 2: Placeholder for context/tool/RAG/response agents
-    final_reply = f"Intent: {intent_data['intent']} with location: {intent_data['entities'].get('location', 'unknown')}"
+    # Step 2: Collect from all data agents
+    reddit_data = fetch_reddit_posts(location, topic)
+    twitter_data = fetch_twitter_posts(location, topic)
+    firestore_data = fetch_firestore_reports(location, topic)
+    rag_data = get_rag_fallback(location, topic)
+
+    # Step 3: Final fused response
+    reply = generate_final_response(
+        user_message=query.message,
+        intent=intent,
+        location=location,
+        topic=topic,
+        reddit_posts=reddit_data,
+        twitter_posts=twitter_data,
+        firestore_reports=firestore_data,
+        rag_docs=rag_data
+    )
 
     return BotResponse(
-        intent=intent_data["intent"],
-        entities=intent_data["entities"],
-        reply=final_reply
+        intent=intent,
+        entities=entities,
+        reply=reply
     )
 
 if __name__ == "__main__":
+    import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
