@@ -6,3 +6,4 @@ python-dotenv
 requests
 tiktoken
 google-cloud-firestore
+praw

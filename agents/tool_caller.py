@@ -1,5 +1,3 @@
-
-
 import os
 import requests
 from urllib.parse import quote
