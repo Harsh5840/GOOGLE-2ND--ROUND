@@ -40,26 +40,23 @@ def fetch_twitter_posts(location: str, topic: str, limit: int = 5) -> Dict[str, 
     query = f"{location} {topic} -is:retweet lang:en"  # Build the query string
 
     try:
-        # Use tweepy's search_recent_tweets method
-        # tweet_fields allows you to specify what additional fields you want
-        # user_fields is for user information if you were fetching users
-        response = client.search_recent_tweets(
+        response = client.search_recent_tweets( #TODO: Maybe add user? -> gives includes.user()
             query,
             max_results=actual_limit,
             tweet_fields=[
                 "created_at",
                 "author_id",
-            ],  # Request author_id to link tweets to users later if needed
+            ],
             expansions=["author_id"],  # To expand user data in the 'includes' field
         )
 
-        tweets_data = response.data  # The actual list of Tweet objects FIX: data doesnt exist for response
-        includes_data = response.includes  # Contains expanded data, e.g, user objects FIX: no includes either
+        tweets_data = response.data  # The actual list of Tweet objects FIX: check if none
+        includes_data = response.includes  # Contains expanded data, e.g, user objects FIX: check if none
 
         processed_tweets = []
         if tweets_data:
             # Create a dictionary to quickly look up user info by author_id
-            users_by_id = {
+            users_by_id = { #TODO: make sure includes data isnt none
                 user["id"]: user["username"] for user in includes_data.get("users", [])
             }
 
