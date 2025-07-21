@@ -1,27 +1,34 @@
 # agents/firestore_agent.py
 
+import os
 from google.cloud import firestore
+from dotenv import load_dotenv
 
+
+load_dotenv()
+
+# Initialize Firestore
 db = firestore.Client()
+
+COLLECTION_NAME = os.getenv("FIREBASE_COLLECTION_NAME", "city_reports")
 
 def fetch_firestore_reports(location: str, topic: str, limit: int = 5) -> list:
     """
     Fetch user-submitted incident reports from Firestore.
-    Assumes collection is named 'city_reports' with fields:
-    - location: str
-    - topic: str
-    - description: str
-    - timestamp: datetime
+    Uses the collection defined in FIREBASE_COLLECTION_NAME (.env).
     """
 
     try:
-        reports_ref = db.collection("city_reports") \
-                        .where("location", "==", location) \
-                        .where("topic", "==", topic) \
-                        .order_by("timestamp", direction=firestore.Query.DESCENDING) \
-                        .limit(limit)
+        reports_ref = (
+            db.collection(COLLECTION_NAME)
+              .where("location", "==", location)
+              .where("topic", "==", topic)
+              .order_by("timestamp", direction=firestore.Query.DESCENDING)
+              .limit(limit)
+        )
 
         docs = reports_ref.stream()
+
         return [
             {
                 "description": doc.to_dict().get("description"),
@@ -31,5 +38,5 @@ def fetch_firestore_reports(location: str, topic: str, limit: int = 5) -> list:
         ]
 
     except Exception as e:
-        print("[FirestoreAgent] Error:", e)
+        print(f"[FirestoreAgent] Error fetching reports for {location}/{topic}:", e)
         return []

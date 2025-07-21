@@ -1,4 +1,4 @@
-# agents/response_agent.py
+
 
 from vertexai.generative_models import GenerativeModel
 

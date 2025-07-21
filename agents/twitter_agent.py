@@ -1,4 +1,3 @@
-# agents/twitter_agent.py
 
 import os
 import requests

@@ -1,9 +1,11 @@
-# apps/orchestrator/main.py
 
+from dotenv import load_dotenv
+load_dotenv()
+
+import os
 from fastapi import FastAPI
 from pydantic import BaseModel
 from google.cloud import aiplatform
-import os
 
 from agents.intent_extractor.agent import extract_intent
 from agents.tool_caller import fetch_reddit_posts
@@ -12,18 +14,21 @@ from agents.firestore_agent import fetch_firestore_reports
 from agents.rag_search import get_rag_fallback
 from agents.response_agent import generate_final_response
 
-# Initialize Vertex AI
+# Initialize Google Cloud Vertex AI
 aiplatform.init(
     project=os.getenv("GCP_PROJECT_ID"),
     location=os.getenv("GCP_REGION")
 )
 
+# FastAPI app setup
 app = FastAPI()
 
+# Request schema
 class UserQuery(BaseModel):
     user_id: str
     message: str
 
+# Response schema
 class BotResponse(BaseModel):
     intent: str
     entities: dict
@@ -31,22 +36,22 @@ class BotResponse(BaseModel):
 
 @app.post("/chat", response_model=BotResponse)
 async def chat_router(query: UserQuery):
-    print(f"[Orchestrator] Received: {query.message}")
+    print(f"[Orchestrator] 📥 Received: {query.message}")
 
-    # Step 1: Extract intent/entities
+    # Step 1: Extract intent and entities
     intent_data = extract_intent(query.message)
     intent = intent_data["intent"]
     entities = intent_data["entities"]
-    location = entities.get("location", "")
+    location = entities.get("location", os.getenv("DEFAULT_LOCATION", "Bengaluru"))
     topic = entities.get("topic", intent)
 
-    # Step 2: Collect from all data agents
+    # Step 2: Aggregate from agents
     reddit_data = fetch_reddit_posts(location, topic)
     twitter_data = fetch_twitter_posts(location, topic)
     firestore_data = fetch_firestore_reports(location, topic)
     rag_data = get_rag_fallback(location, topic)
 
-    # Step 3: Final fused response
+    # Step 3: Generate fused AI response
     reply = generate_final_response(
         user_message=query.message,
         intent=intent,
