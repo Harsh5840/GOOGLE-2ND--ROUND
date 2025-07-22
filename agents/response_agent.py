@@ -1,5 +1,3 @@
-
-
 from vertexai.generative_models import GenerativeModel
 
 gemini = GenerativeModel("gemini-1.5-pro")
