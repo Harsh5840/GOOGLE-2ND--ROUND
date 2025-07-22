@@ -9,7 +9,7 @@ from shared.utils.logger import log_event
 
 from agents.reddit_agent import fetch_reddit_posts
 from agents.twitter_agent import fetch_twitter_posts
-from agents.firestore_agent import fetch_firestore_reports
+from agents.firestore_agent import fetch_firestore_reports, store_travel_time_record
 from agents.rag_search import get_rag_fallback
 from agents.response_agent import generate_final_response
 from agents.intent_extractor.agent import extract_intent
@@ -17,6 +17,8 @@ from agents.news_agent import fetch_city_news
 from agents.googlemaps_agent import get_best_route
 from agents.google_search_agent import google_search
 from agents.agglomerator import aggregate_api_results
+
+from datetime import datetime
 
 # Initialize Google Cloud Vertex AI
 aiplatform.init(
@@ -37,6 +39,12 @@ class BotResponse(BaseModel):
     intent: str
     entities: dict
     reply: str
+
+class TravelDataRequest(BaseModel):
+    route: str
+    datetime: str  # ISO format
+    weather: str = ""
+    # Optionally, allow user to specify origin/destination, but route string is enough for now
 
 def city_chatbot_orchestrator(message: str) -> str:
     log_event("Orchestrator", "Running city_chatbot_orchestrator...")
@@ -102,6 +110,48 @@ async def chat_router(query: UserQuery):
         entities=entities,
         reply=reply
     )
+
+@app.post("/collect_travel_data")
+async def collect_travel_data(request: TravelDataRequest):
+    """
+    Collect and store travel time and event data for a given route and datetime.
+    Gathers Google Maps travel time, Twitter, Reddit, News, and Google Search events.
+    """
+    # Parse datetime
+    try:
+        dt = datetime.fromisoformat(request.datetime)
+    except Exception as e:
+        return {"success": False, "error": f"Invalid datetime format: {e}"}
+
+    # Fetch travel time from Google Maps
+    # For demo, use get_best_route with route as both origin and destination (should be split in real use)
+    maps_data = get_best_route(request.route, request.route)
+    travel_time_minutes = None
+    if isinstance(maps_data, dict) and "duration" in maps_data:
+        # Try to extract minutes from string like '45 mins'
+        try:
+            travel_time_minutes = int(maps_data["duration"].split()[0])
+        except Exception:
+            travel_time_minutes = None
+
+    # Fetch event data
+    twitter_events = fetch_twitter_posts(request.route, "traffic")
+    reddit_events = fetch_reddit_posts(request.route, "traffic")
+    news_events = fetch_city_news(request.route)
+    google_search_events = google_search(f"traffic {request.route}")
+
+    # Store in Firestore
+    success = store_travel_time_record(
+        route=request.route,
+        datetime_str=request.datetime,
+        travel_time_minutes=travel_time_minutes or -1,
+        twitter_events=twitter_events.get("tweets") if isinstance(twitter_events, dict) else [],
+        reddit_events=reddit_events.get("posts") if isinstance(reddit_events, dict) else [],
+        news_events=news_events.get("articles") if isinstance(news_events, dict) else [],
+        google_search_events=google_search_events,
+        weather=request.weather
+    )
+    return {"success": success}
 
 if __name__ == "__main__":
     import uvicorn
