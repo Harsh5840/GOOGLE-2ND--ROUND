@@ -26,6 +26,7 @@ from agents.googlemaps_agent import get_best_route, get_must_visit_places_nearby
 from agents.google_search_agent import google_search
 from agents.agglomerator import aggregate_api_results
 from shared.utils.mood import analyze_sentiment, aggregate_mood
+from shared.utils.user_photos import save_user_photo, fetch_user_photos_nearby
 
 # Initialize Google Cloud Vertex AI
 aiplatform.init(
@@ -123,53 +124,11 @@ async def submit_photo(
     """
     Accepts a photo upload, geotags it, and stores metadata in Firestore.
     """
-    # 1. Save file to GCS
-    storage_client = storage.Client()
-    bucket = storage_client.bucket(USER_PHOTO_BUCKET)
-    photo_id = str(uuid4())
-    ext = file.filename.split(".")[-1]
-    blob = bucket.blob(f"photos/{photo_id}.{ext}")
-    content = await file.read()
-    blob.upload_from_string(content, content_type=file.content_type)
-    photo_url = f"https://storage.googleapis.com/{USER_PHOTO_BUCKET}/photos/{photo_id}.{ext}"
-    # 2. Store metadata in Firestore
-    doc = {
-        "photo_url": photo_url,
-        "lat": lat,
-        "lng": lng,
-        "description": description or "",
-        "user_id": user_id or "",
-        "timestamp": datetime.utcnow().isoformat()
-    }
-    db.collection(USER_PHOTO_COLLECTION).add(doc)
-    return {"success": True, "photo_url": photo_url}
-
-def fetch_user_photos_nearby(lat: float, lng: float, radius_m: int = 500) -> list:
-    """
-    Fetch user photos within radius_m meters of the given lat/lng.
-    """
-    # Firestore does not support geo queries natively; for demo, fetch all and filter in Python
-    try:
-        docs = db.collection(USER_PHOTO_COLLECTION).stream()
-        from math import radians, cos, sin, sqrt, atan2
-        def haversine(lat1, lng1, lat2, lng2):
-            R = 6371000  # meters
-            phi1, phi2 = radians(lat1), radians(lat2)
-            dphi = radians(lat2 - lat1)
-            dlambda = radians(lng2 - lng1)
-            a = sin(dphi/2)**2 + cos(phi1)*cos(phi2)*sin(dlambda/2)**2
-            return R * 2 * atan2(sqrt(a), sqrt(1-a))
-        photos = []
-        for doc in docs:
-            d = doc.to_dict()
-            if "lat" in d and "lng" in d:
-                dist = haversine(lat, lng, d["lat"], d["lng"])
-                if dist <= radius_m:
-                    photos.append(d)
-        return photos
-    except Exception as e:
-        log_event("UserPhoto", f"Error fetching user photos: {e}")
-        return []
+    photo_url = await save_user_photo(file, lat, lng, description, user_id)
+    if photo_url:
+        return {"success": True, "photo_url": photo_url}
+    else:
+        return {"success": False, "error": "Failed to save photo."}
 
 @app.post("/location_mood")
 async def location_mood(
