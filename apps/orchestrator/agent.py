@@ -34,6 +34,10 @@ def city_chatbot_orchestrator(message: str) -> str:
     print("[Orchestrator] Data from tools fetched successfully.")
 
     # Step 3: Fuse all info via Gemini response agent
+    if not (reddit_data or twitter_data or firestore_data or rag_data or news_data):
+        google_results = google_search(message)
+        rag_data = [f"{item['title']}: {item['snippet']} ({item['link']})" for item in google_results]
+
     final_response = generate_final_response(
         user_message=message,
         intent=intent,

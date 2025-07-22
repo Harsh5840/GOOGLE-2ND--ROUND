@@ -39,6 +39,12 @@ Citizen Reports (Firestore):
 RAG Background Info:
 {rag_docs if rag_docs else "None"}
 
+News Articles:
+{news_articles if news_articles else "None"}
+
+Maps Info:
+{maps_info if maps_info else "None"}
+
 Your task:
 - Combine all this into a single short paragraph.
 - Mention actionable info if any.
