@@ -3,7 +3,7 @@
 import os
 from google.cloud import firestore
 from dotenv import load_dotenv
-
+from shared.utils.logger import log_event
 
 load_dotenv()
 
@@ -38,5 +38,5 @@ def fetch_firestore_reports(location: str, topic: str, limit: int = 5) -> list:
         ]
 
     except Exception as e:
-        print(f"[FirestoreAgent] Error fetching reports for {location}/{topic}:", e)
+        log_event("FirestoreAgent", f"Error fetching reports for {location}/{topic}: {e}")
         return []

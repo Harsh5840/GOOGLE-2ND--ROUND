@@ -10,6 +10,7 @@ from vertexai.generative_models import (
     ToolConfig,
     Part,
 )
+from shared.utils.logger import log_event
 
 load_dotenv()
 
@@ -30,7 +31,7 @@ def fetch_twitter_posts(location: str, topic: str, limit: int = 5) -> Dict[str, 
               Returns a dictionary with an 'error' key if an error occurs.
     """
     if not BEARER_TOKEN:
-        print("[TwitterAgent] Error: TWITTER_BEARER_TOKEN not set.")
+        log_event("TwitterAgent", "Error: TWITTER_BEARER_TOKEN not set.")
         return {"error": "Twitter API token not configured."}
 
     client = tweepy.Client(BEARER_TOKEN)
@@ -80,11 +81,11 @@ def fetch_twitter_posts(location: str, topic: str, limit: int = 5) -> Dict[str, 
 
     except tweepy.TweepyException as e:
         error_msg = f"Tweepy API Error: {e}"
-        print(f"[TwitterAgent] {error_msg}")
+        log_event("TwitterAgent", error_msg)
         return {"error": error_msg}
     except Exception as e:
         error_msg = f"An unexpected error occurred: {e}"
-        print(f"[TwitterAgent] {error_msg}")
+        log_event("TwitterAgent", error_msg)
         return {"error": error_msg}
 
 
@@ -142,8 +143,7 @@ class TwitterAgent:
         self.chat_session = self.model.start_chat()
 
     def process_query(self, query: str) -> str:
-        """Processes a user query and returns a response, potentially using the Twitter tool."""
-        print(f"DEBUG: TwitterAgent received query: {query}")
+        log_event("TwitterAgent", f"Received query: {query}")
         response = self.chat_session.send_message(query)
 
         if response.candidates and response.candidates[0].function_calls:
@@ -154,17 +154,18 @@ class TwitterAgent:
                 function_args = {k: v for k, v in function_call.args.items()}
 
                 if function_name in TOOL_FUNCTIONS:
-                    print(
-                        f"DEBUG: TwitterAgent calling tool: {function_name} with args: {function_args}"
+                    log_event(
+                        "TwitterAgent",
+                        f"Calling tool: {function_name} with args: {function_args}"
                     )
                     result = TOOL_FUNCTIONS[function_name](**function_args)
-                    print(f"DEBUG: Tool output received: {result}")
+                    log_event("TwitterAgent", f"Tool output received: {result}")
                     tool_outputs.append(
                         Part.from_function_response(name=function_name, response=result)
                     )
                 else:
                     error_msg = f"TwitterAgent: Unknown tool requested: {function_name}"
-                    print(f"DEBUG: {error_msg}")
+                    log_event("TwitterAgent", error_msg)
                     tool_outputs.append(
                         Part.from_function_response(
                             name=function_name, response={"error": error_msg}

@@ -1,7 +1,7 @@
 
 
-from agents.tool_caller import fetch_reddit_posts
 from agents.twitter_agent import fetch_twitter_posts
+from agents.reddit_agent import fetch_reddit_posts
 from agents.firestore_agent import fetch_firestore_reports
 from agents.rag_search import get_rag_fallback
 from agents.response_agent import generate_final_response

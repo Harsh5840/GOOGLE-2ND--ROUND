@@ -10,6 +10,7 @@ from vertexai.generative_models import (
     ToolConfig,
     Part,
 )
+from shared.utils.logger import log_event
 
 load_dotenv()
 
@@ -30,7 +31,7 @@ def fetch_reddit_posts(subreddit: str, limit: int = 5) -> Dict[str, Any]:
               Returns a dictionary with an 'error' key if an error occurs.
     """
     if not (REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET and REDDIT_USER_AGENT):
-        print("[RedditAgent] Error: Reddit credentials not set.")
+        log_event("RedditAgent", "Error: Reddit credentials not set.")
         return {"error": "Reddit API credentials not configured."}
 
     actual_limit = min(limit, 100)
@@ -53,7 +54,7 @@ def fetch_reddit_posts(subreddit: str, limit: int = 5) -> Dict[str, Any]:
         return {"posts": posts}
     except Exception as e:
         error_msg = f"Reddit API error: {e}"
-        print(f"[RedditAgent] {error_msg}")
+        log_event("RedditAgent", error_msg)
         return {"error": error_msg}
 
 fetch_reddit_posts_tool_declaration = FunctionDeclaration(
@@ -104,8 +105,7 @@ class RedditAgent:
         self.chat_session = self.model.start_chat()
 
     def process_query(self, query: str) -> str:
-        """Processes a user query and returns a response, potentially using the Reddit tool."""
-        print(f"DEBUG: RedditAgent received query: {query}")
+        log_event("RedditAgent", f"Received query: {query}")
         response = self.chat_session.send_message(query)
 
         if response.candidates and response.candidates[0].function_calls:
@@ -116,17 +116,18 @@ class RedditAgent:
                 function_args = {k: v for k, v in function_call.args.items()}
 
                 if function_name in TOOL_FUNCTIONS:
-                    print(
-                        f"DEBUG: RedditAgent calling tool: {function_name} with args: {function_args}"
+                    log_event(
+                        "RedditAgent",
+                        f"Calling tool: {function_name} with args: {function_args}"
                     )
                     result = TOOL_FUNCTIONS[function_name](**function_args)
-                    print(f"DEBUG: Tool output received: {result}")
+                    log_event("RedditAgent", f"Tool output received: {result}")
                     tool_outputs.append(
                         Part.from_function_response(name=function_name, response=result)
                     )
                 else:
                     error_msg = f"RedditAgent: Unknown tool requested: {function_name}"
-                    print(f"DEBUG: {error_msg}")
+                    log_event("RedditAgent", error_msg)
                     tool_outputs.append(
                         Part.from_function_response(
                             name=function_name, response={"error": error_msg}

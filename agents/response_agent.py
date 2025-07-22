@@ -1,4 +1,5 @@
 from vertexai.generative_models import GenerativeModel
+from shared.utils.logger import log_event
 
 gemini = GenerativeModel("gemini-2.0-flash")
 
@@ -10,7 +11,9 @@ def generate_final_response(
     reddit_posts: list,
     twitter_posts: list,
     firestore_reports: list,
-    rag_docs: list
+    rag_docs: list,
+    maps_info: list,
+    news_articles: list
 ) -> str:
     """
     Fuse data from multiple sources into a single, helpful city update.
@@ -59,5 +62,5 @@ Final Answer:
         response = gemini.generate_content(prompt)
         return response.text.strip()
     except Exception as e:
-        print("[ResponseAgent] Error:", e)
+        log_event("ResponseAgent", f"Error: {e}")
         return "Sorry, I couldn't generate an answer right now."

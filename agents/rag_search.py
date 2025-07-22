@@ -1,6 +1,7 @@
 # agents/rag_search.py
 
 from vertexai.generative_models import GenerativeModel
+from shared.utils.logger import log_event
 
 gemini = GenerativeModel("gemini-2.0-flash")
 
@@ -30,5 +31,5 @@ Example:
         return bullets
 
     except Exception as e:
-        print("[RAGSearch] Error:", e)
+        log_event("RAGSearch", f"Error: {e}")
         return []
