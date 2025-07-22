@@ -17,7 +17,7 @@ from agents.rag_search import get_rag_fallback
 from agents.response_agent import generate_final_response
 from agents.intent_extractor.agent import extract_intent
 from agents.news_agent import fetch_city_news
-from agents.googlemaps_agent import get_best_route
+from agents.googlemaps_agent import get_best_route, get_must_visit_places_nearby
 from agents.google_search_agent import google_search
 from agents.agglomerator import aggregate_api_results
 from shared.utils.mood import analyze_sentiment, aggregate_mood
@@ -114,7 +114,7 @@ async def location_mood(
 ):
     """
     Aggregate mood for a location at a given time using the unified aggregator response.
-    Returns a mood label, score, detected events, and source breakdown for frontend use.
+    Returns a mood label, score, detected events, must-visit places, and source breakdown for frontend use.
     """
     unified_data = aggregate_api_results(
         reddit_data=fetch_reddit_posts(location, ""),
@@ -126,10 +126,12 @@ async def location_mood(
         google_search_data=google_search(location)
     )
     mood_result = aggregate_mood(unified_data)
+    must_visit_places = get_must_visit_places_nearby(location, max_results=3)
     return {
         "location": location,
         "datetime": datetime_str,
-        **mood_result
+        **mood_result,
+        "must_visit_places": must_visit_places
     }
 
 if __name__ == "__main__":

@@ -70,6 +70,52 @@ def get_best_route(current_location: str, destination: str, mode: str = "driving
         log_event("GoogleMapsAgent", error_msg)
         return {"error": error_msg}
 
+def get_must_visit_places_nearby(location: str, max_results: int = 3) -> list:
+    """
+    Uses Google Maps Places API to find top-rated places (any type) near a location.
+    Returns a list of dicts with name, type, rating, address, place_id, photo_url, open_now.
+    """
+    if not GOOGLE_MAPS_API_KEY:
+        log_event("GoogleMapsAgent", "GOOGLE_MAPS_API_KEY not set.")
+        return []
+    try:
+        gmaps = googlemaps.Client(key=GOOGLE_MAPS_API_KEY)
+        # Geocode the location to lat/lng
+        geocode = gmaps.geocode(location)
+        if not geocode:
+            return []
+        latlng = geocode[0]["geometry"]["location"]
+        # Search for top-rated places nearby (any type)
+        places = gmaps.places_nearby(
+            location=(latlng["lat"], latlng["lng"]),
+            radius=1000,  # meters
+            rank_by=None,
+            type=None,
+            open_now=False
+        )
+        results = places.get("results", [])
+        # Sort by rating, then user_ratings_total
+        results = sorted(results, key=lambda x: (x.get("rating", 0), x.get("user_ratings_total", 0)), reverse=True)
+        must_visit = []
+        for place in results[:max_results]:
+            photo_url = None
+            if place.get("photos"):
+                photo_ref = place["photos"][0]["photo_reference"]
+                photo_url = f"https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference={photo_ref}&key={GOOGLE_MAPS_API_KEY}"
+            must_visit.append({
+                "name": place.get("name"),
+                "type": place.get("types", [None])[0],
+                "rating": place.get("rating"),
+                "address": place.get("vicinity"),
+                "place_id": place.get("place_id"),
+                "photo_url": photo_url,
+                "open_now": place.get("opening_hours", {}).get("open_now") if place.get("opening_hours") else None
+            })
+        return must_visit
+    except Exception as e:
+        log_event("GoogleMapsAgent", f"Error in get_must_visit_places_nearby: {e}")
+        return []
+
 get_best_route_tool_declaration = FunctionDeclaration(
     name="get_best_route",
     description="Finds the best route between two locations using Google Maps, considering current traffic.",
