@@ -17,6 +17,7 @@ from agents.news_agent import fetch_city_news
 from agents.googlemaps_agent import get_best_route
 from agents.google_search_agent import google_search
 from agents.agglomerator import aggregate_api_results
+from typing import Optional
 
 from datetime import datetime
 
@@ -45,6 +46,15 @@ class TravelDataRequest(BaseModel):
     datetime: str  # ISO format
     weather: str = ""
     # Optionally, allow user to specify origin/destination, but route string is enough for now
+
+class TravelTimeFeatures(BaseModel):
+    weekday: int
+    hour: int
+    weather: str = ""
+    twitter_event_count: int = 0
+    reddit_event_count: int = 0
+    news_event_count: int = 0
+    google_search_event_count: int = 0
 
 def city_chatbot_orchestrator(message: str) -> str:
     log_event("Orchestrator", "Running city_chatbot_orchestrator...")
@@ -152,6 +162,22 @@ async def collect_travel_data(request: TravelDataRequest):
         weather=request.weather
     )
     return {"success": success}
+
+@app.post("/predict_travel_time")
+async def predict_travel_time(features: TravelTimeFeatures):
+    """
+    Predict travel time using the deployed Vertex AI model and provided features.
+    """
+    PROJECT_ID = os.getenv("GCP_PROJECT_ID")
+    LOCATION = os.getenv("GCP_REGION", "us-central1")
+    ENDPOINT_ID = os.getenv("VERTEX_AI_ENDPOINT_ID")
+    aiplatform.init(project=PROJECT_ID, location=LOCATION)
+    endpoint = aiplatform.Endpoint(ENDPOINT_ID)
+    response = endpoint.predict(instances=[features.dict()])
+    if response and hasattr(response, 'predictions'):
+        return {"predicted_travel_time_minutes": response.predictions[0]}
+    else:
+        return {"error": "No prediction returned."}
 
 if __name__ == "__main__":
     import uvicorn
