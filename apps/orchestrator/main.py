@@ -20,7 +20,7 @@ from agents.news_agent import fetch_city_news
 from agents.googlemaps_agent import get_best_route
 from agents.google_search_agent import google_search
 from agents.agglomerator import aggregate_api_results
-from shared.utils.mood import analyze_sentiment, aggregate_mood_from_unified_data
+from shared.utils.mood import analyze_sentiment, aggregate_mood
 
 # Initialize Google Cloud Vertex AI
 aiplatform.init(
@@ -114,7 +114,7 @@ async def location_mood(
 ):
     """
     Aggregate mood for a location at a given time using the unified aggregator response.
-    Returns a mood label, score, and source breakdown for frontend use.
+    Returns a mood label, score, detected events, and source breakdown for frontend use.
     """
     unified_data = aggregate_api_results(
         reddit_data=fetch_reddit_posts(location, ""),
@@ -125,7 +125,7 @@ async def location_mood(
         rag_data=[],
         google_search_data=google_search(location)
     )
-    mood_result = aggregate_mood_from_unified_data(unified_data)
+    mood_result = aggregate_mood(unified_data)
     return {
         "location": location,
         "datetime": datetime_str,

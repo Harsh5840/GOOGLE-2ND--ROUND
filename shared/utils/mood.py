@@ -2,14 +2,11 @@ from textblob import TextBlob
 from typing import Any, Dict, List, Tuple
 import re
 
-def analyze_sentiment(texts: List[Any]) -> Tuple[float, List[str]]:
+def extract_contents(texts: List[Any]) -> List[str]:
     """
-    Analyze sentiment of a list of texts (dicts or strings). Returns average polarity and top keywords.
+    Extracts main content from a list of dicts or strings.
     """
-    if not texts:
-        return 0.0, []
-    scores = []
-    keywords = []
+    contents = []
     for t in texts:
         if not t:
             continue
@@ -18,9 +15,19 @@ def analyze_sentiment(texts: List[Any]) -> Tuple[float, List[str]]:
         else:
             content = str(t)
         if content:
-            blob = TextBlob(content)
-            scores.append(blob.sentiment.polarity)
-            keywords.extend(blob.noun_phrases)
+            contents.append(content)
+    return contents
+
+def analyze_sentiment(texts: List[Any]) -> Tuple[float, List[str]]:
+    contents = extract_contents(texts)
+    if not contents:
+        return 0.0, []
+    scores = []
+    keywords = []
+    for content in contents:
+        blob = TextBlob(content)
+        scores.append(blob.sentiment.polarity)
+        keywords.extend(blob.noun_phrases)
     avg_score = sum(scores) / len(scores) if scores else 0.0
     top_keywords = list(set(keywords))[:5]
     return avg_score, top_keywords
@@ -34,13 +41,8 @@ def detect_events(texts: List[Any], source: str) -> List[Dict[str, Any]]:
         "concert", "emergency", "strike", "jam", "block", "delay", "crowd", "police", "roadwork"
     ]
     event_counts = {}
-    for t in texts:
-        if not t:
-            continue
-        if isinstance(t, dict):
-            content = t.get("text") or t.get("title") or t.get("description") or ""
-        else:
-            content = str(t)
+    contents = extract_contents(texts)
+    for content in contents:
         content_lower = content.lower()
         for keyword in EVENT_KEYWORDS:
             if re.search(rf"\b{re.escape(keyword)}\b", content_lower):
@@ -49,7 +51,7 @@ def detect_events(texts: List[Any], source: str) -> List[Dict[str, Any]]:
         {"type": k, "count": v, "sources": [source]} for k, v in event_counts.items()
     ]
 
-def aggregate_mood_from_unified_data(unified_data: Dict[str, Any]) -> Dict[str, Any]:
+def aggregate_mood(unified_data: Dict[str, Any]) -> Dict[str, Any]:
     """
     Given unified_data from the aggregator, compute mood label, score, source breakdown, and detected events.
     """
