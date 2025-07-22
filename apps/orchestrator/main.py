@@ -9,6 +9,11 @@ from shared.utils.logger import log_event
 from fastapi import Query
 from textblob import TextBlob
 from typing import Optional, Dict, Any, Tuple, List
+from fastapi import UploadFile, File, Form
+from google.cloud import storage
+from uuid import uuid4
+from agents.firestore_agent import db
+from datetime import datetime
 
 from agents.reddit_agent import fetch_reddit_posts
 from agents.twitter_agent import fetch_twitter_posts
@@ -107,6 +112,65 @@ async def chat_router(query: UserQuery):
         reply=reply
     )
 
+@app.post("/submit_photo")
+async def submit_photo(
+    file: UploadFile = File(...),
+    lat: float = Form(...),
+    lng: float = Form(...),
+    description: Optional[str] = Form(None),
+    user_id: Optional[str] = Form(None)
+):
+    """
+    Accepts a photo upload, geotags it, and stores metadata in Firestore.
+    """
+    # 1. Save file to GCS
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(USER_PHOTO_BUCKET)
+    photo_id = str(uuid4())
+    ext = file.filename.split(".")[-1]
+    blob = bucket.blob(f"photos/{photo_id}.{ext}")
+    content = await file.read()
+    blob.upload_from_string(content, content_type=file.content_type)
+    photo_url = f"https://storage.googleapis.com/{USER_PHOTO_BUCKET}/photos/{photo_id}.{ext}"
+    # 2. Store metadata in Firestore
+    doc = {
+        "photo_url": photo_url,
+        "lat": lat,
+        "lng": lng,
+        "description": description or "",
+        "user_id": user_id or "",
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    db.collection(USER_PHOTO_COLLECTION).add(doc)
+    return {"success": True, "photo_url": photo_url}
+
+def fetch_user_photos_nearby(lat: float, lng: float, radius_m: int = 500) -> list:
+    """
+    Fetch user photos within radius_m meters of the given lat/lng.
+    """
+    # Firestore does not support geo queries natively; for demo, fetch all and filter in Python
+    try:
+        docs = db.collection(USER_PHOTO_COLLECTION).stream()
+        from math import radians, cos, sin, sqrt, atan2
+        def haversine(lat1, lng1, lat2, lng2):
+            R = 6371000  # meters
+            phi1, phi2 = radians(lat1), radians(lat2)
+            dphi = radians(lat2 - lat1)
+            dlambda = radians(lng2 - lng1)
+            a = sin(dphi/2)**2 + cos(phi1)*cos(phi2)*sin(dlambda/2)**2
+            return R * 2 * atan2(sqrt(a), sqrt(1-a))
+        photos = []
+        for doc in docs:
+            d = doc.to_dict()
+            if "lat" in d and "lng" in d:
+                dist = haversine(lat, lng, d["lat"], d["lng"])
+                if dist <= radius_m:
+                    photos.append(d)
+        return photos
+    except Exception as e:
+        log_event("UserPhoto", f"Error fetching user photos: {e}")
+        return []
+
 @app.post("/location_mood")
 async def location_mood(
     location: str = Query(..., description="Location name or address"),
@@ -114,7 +178,7 @@ async def location_mood(
 ):
     """
     Aggregate mood for a location at a given time using the unified aggregator response.
-    Returns a mood label, score, detected events, must-visit places, and source breakdown for frontend use.
+    Returns a mood label, score, detected events, must-visit places, user photos, and source breakdown for frontend use.
     """
     unified_data = aggregate_api_results(
         reddit_data=fetch_reddit_posts(location, ""),
@@ -127,11 +191,22 @@ async def location_mood(
     )
     mood_result = aggregate_mood(unified_data)
     must_visit_places = get_must_visit_places_nearby(location, max_results=3)
+    # Geocode location for lat/lng
+    try:
+        gmaps = get_best_route.__globals__["googlemaps"].Client(key=os.getenv("GOOGLE_MAPS_API_KEY"))
+        geocode = gmaps.geocode(location)
+        latlng = geocode[0]["geometry"]["location"] if geocode else {"lat": None, "lng": None}
+    except Exception:
+        latlng = {"lat": None, "lng": None}
+    user_photos = []
+    if latlng["lat"] is not None and latlng["lng"] is not None:
+        user_photos = fetch_user_photos_nearby(latlng["lat"], latlng["lng"], radius_m=500)
     return {
         "location": location,
         "datetime": datetime_str,
         **mood_result,
-        "must_visit_places": must_visit_places
+        "must_visit_places": must_visit_places,
+        "user_photos": user_photos
     }
 
 if __name__ == "__main__":
