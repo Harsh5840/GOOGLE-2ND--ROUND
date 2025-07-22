@@ -6,6 +6,9 @@ from agents.firestore_agent import fetch_firestore_reports
 from agents.rag_search import get_rag_fallback
 from agents.response_agent import generate_final_response
 from agents.intent_extractor.agent import extract_intent
+from agents.news_agent import fetch_city_news
+from agents.googlemaps_agent import get_best_route
+from agents.google_search_agent import google_search
 
 
 def city_chatbot_orchestrator(message: str) -> str:
@@ -25,6 +28,8 @@ def city_chatbot_orchestrator(message: str) -> str:
     twitter_data = fetch_twitter_posts(location, topic)
     firestore_data = fetch_firestore_reports(location, topic)
     rag_data = get_rag_fallback(location, topic)
+    news_data = fetch_city_news(location)
+    maps_data = get_best_route(location, topic)  # If topic is a destination, else adjust as needed
 
     print("[Orchestrator] Data from tools fetched successfully.")
 
@@ -37,7 +42,9 @@ def city_chatbot_orchestrator(message: str) -> str:
         reddit_posts=reddit_data,
         twitter_posts=twitter_data,
         firestore_reports=firestore_data,
-        rag_docs=rag_data
+        rag_docs=rag_data,
+        news_articles=news_data,
+        maps_info=maps_data
     )
 
     return final_response
