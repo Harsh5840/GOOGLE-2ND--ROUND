@@ -90,7 +90,7 @@ class NewsAgent:
     def __init__(self, project_id: str, region: str):
         vertexai.init(project=project_id, location=region)
         self.model = GenerativeModel(
-            "gemini-1.5-flash",
+            "gemini-2.0-flash",
             tools=NEWS_TOOLS,
             tool_config=ToolConfig(
                 function_calling_config=ToolConfig.FunctionCallingConfig(

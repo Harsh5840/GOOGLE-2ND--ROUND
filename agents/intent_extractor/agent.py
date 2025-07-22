@@ -3,7 +3,7 @@
 from vertexai.generative_models import GenerativeModel
 import re
 
-gemini = GenerativeModel("gemini-1.5-pro")
+gemini = GenerativeModel("gemini-2.0-flash")
 
 def extract_intent(message: str) -> dict:
     prompt = f"""

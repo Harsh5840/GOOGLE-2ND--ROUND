@@ -1,6 +1,6 @@
 from vertexai.generative_models import GenerativeModel
 
-gemini = GenerativeModel("gemini-1.5-pro")
+gemini = GenerativeModel("gemini-2.0-flash")
 
 def generate_final_response(
     user_message: str,

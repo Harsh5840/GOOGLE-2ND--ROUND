@@ -2,7 +2,7 @@
 
 from vertexai.generative_models import GenerativeModel
 
-gemini = GenerativeModel("gemini-1.5-pro")
+gemini = GenerativeModel("gemini-2.0-flash")
 
 def get_rag_fallback(location: str, topic: str) -> list:
     """
