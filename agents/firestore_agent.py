@@ -5,6 +5,7 @@ from google.cloud import firestore
 from dotenv import load_dotenv
 from shared.utils.logger import log_event
 from typing import List, Dict, Any, Optional
+from datetime import datetime
 
 load_dotenv()
 
@@ -51,11 +52,15 @@ def store_travel_time_record(
 ) -> bool:
     """
     Store a historical travel time record and associated event data for prediction.
+    Also stores weekday and hour for easier querying.
     """
     try:
+        dt = datetime.fromisoformat(datetime_str)
         doc = {
             "route": route,
             "datetime": datetime_str,
+            "weekday": dt.weekday(),
+            "hour": dt.hour,
             "travel_time_minutes": travel_time_minutes,
             "twitter_events": twitter_events or [],
             "reddit_events": reddit_events or [],
@@ -68,6 +73,24 @@ def store_travel_time_record(
     except Exception as e:
         log_event("FirestoreAgent", f"Error storing travel time record: {e}")
         return False
+
+# Feature engineering: convert a travel time record to a feature vector
+def travel_record_to_features(record: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Convert a travel time record to a feature vector for model training/prediction.
+    Features include: weekday, hour, weather, event counts, etc.
+    """
+    return {
+        "weekday": record.get("weekday"),
+        "hour": record.get("hour"),
+        "weather": record.get("weather", ""),
+        "twitter_event_count": len(record.get("twitter_events", [])),
+        "reddit_event_count": len(record.get("reddit_events", [])),
+        "news_event_count": len(record.get("news_events", [])),
+        "google_search_event_count": len(record.get("google_search_events", [])),
+        # Optionally, add more features: sentiment, event types, etc.
+        "travel_time_minutes": record.get("travel_time_minutes"),
+    }
 
 def fetch_travel_time_records(
     route: str,
