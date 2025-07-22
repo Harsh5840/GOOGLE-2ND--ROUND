@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from google.cloud import aiplatform
 
 from agents.intent_extractor.agent import extract_intent
-from agents.tool_caller import fetch_reddit_posts
+from agents.reddit_agent import fetch_reddit_posts
 from agents.twitter_agent import fetch_twitter_posts
 from agents.firestore_agent import fetch_firestore_reports
 from agents.rag_search import get_rag_fallback
@@ -36,7 +36,7 @@ class BotResponse(BaseModel):
 
 @app.post("/chat", response_model=BotResponse)
 async def chat_router(query: UserQuery):
-    print(f"[Orchestrator] 📥 Received: {query.message}")
+    print(f"[Orchestrator] Received: {query.message}")
 
     # Step 1: Extract intent and entities
     intent_data = extract_intent(query.message)

@@ -8,12 +8,7 @@ def generate_final_response(
     intent: str,
     location: str,
     topic: str,
-    reddit_posts: list,
-    twitter_posts: list,
-    firestore_reports: list,
-    rag_docs: list,
-    maps_info: list,
-    news_articles: list
+    unified_data: dict
 ) -> str:
     """
     Fuse data from multiple sources into a single, helpful city update.
@@ -28,25 +23,28 @@ Intent: {intent}
 Location: {location}
 Topic: {topic}
 
-Here are the inputs:
+Here are the unified inputs (from multiple APIs):
 
 Reddit Posts:
-{reddit_posts if reddit_posts else "None"}
+{unified_data.get('reddit', 'None')}
 
 Twitter Posts:
-{twitter_posts if twitter_posts else "None"}
-
-Citizen Reports (Firestore):
-{firestore_reports if firestore_reports else "None"}
-
-RAG Background Info:
-{rag_docs if rag_docs else "None"}
+{unified_data.get('twitter', 'None')}
 
 News Articles:
-{news_articles if news_articles else "None"}
+{unified_data.get('news', 'None')}
 
 Maps Info:
-{maps_info if maps_info else "None"}
+{unified_data.get('maps', 'None')}
+
+Citizen Reports (Firestore):
+{unified_data.get('firestore', 'None')}
+
+RAG Background Info:
+{unified_data.get('rag', 'None')}
+
+Google Search Results:
+{unified_data.get('google_search', 'None')}
 
 Your task:
 - Combine all this into a single short paragraph.
