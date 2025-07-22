@@ -6,6 +6,9 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from google.cloud import aiplatform
 from shared.utils.logger import log_event
+from fastapi import Query
+from textblob import TextBlob
+from typing import Optional
 
 from agents.reddit_agent import fetch_reddit_posts
 from agents.twitter_agent import fetch_twitter_posts
@@ -102,6 +105,84 @@ async def chat_router(query: UserQuery):
         entities=entities,
         reply=reply
     )
+
+@app.post("/location_mood")
+async def location_mood(
+    location: str = Query(..., description="Location name or address"),
+    datetime_str: Optional[str] = Query(None, description="ISO datetime string (optional)")
+):
+    """
+    Aggregate mood for a location at a given time using Reddit, Twitter, News, Google Search, and Maps.
+    Returns a mood label, score, and source breakdown for frontend use.
+    """
+    # 1. Fetch data from all sources
+    twitter_data = fetch_twitter_posts(location, "")
+    reddit_data = fetch_reddit_posts(location, "")
+    news_data = fetch_city_news(location)
+    google_data = google_search(location)
+    maps_data = get_best_route(location, location)  # Not sentiment, but can check for traffic
+
+    # 2. Sentiment analysis helper
+    def analyze_sentiment(texts):
+        if not texts:
+            return 0.0, []
+        scores = []
+        keywords = []
+        for t in texts:
+            if not t:
+                continue
+            if isinstance(t, dict):
+                content = t.get("text") or t.get("title") or t.get("description") or ""
+            else:
+                content = str(t)
+            if content:
+                blob = TextBlob(content)
+                scores.append(blob.sentiment.polarity)
+                keywords.extend(blob.noun_phrases)
+        avg_score = sum(scores) / len(scores) if scores else 0.0
+        top_keywords = list(set(keywords))[:5]
+        return avg_score, top_keywords
+
+    # 3. Analyze each source
+    twitter_score, twitter_keywords = analyze_sentiment(
+        twitter_data.get("tweets", []) if isinstance(twitter_data, dict) else []
+    )
+    reddit_score, reddit_keywords = analyze_sentiment(
+        reddit_data.get("posts", []) if isinstance(reddit_data, dict) else []
+    )
+    news_score, news_keywords = analyze_sentiment(
+        news_data.get("articles", []) if isinstance(news_data, dict) else []
+    )
+    google_score, google_keywords = analyze_sentiment(google_data)
+    # For maps, use traffic info as a negative/neutral signal
+    maps_score = -0.5 if maps_data and isinstance(maps_data, dict) and "duration_in_traffic" in maps_data and maps_data["duration_in_traffic"] != maps_data.get("duration") else 0.0
+    maps_keywords = ["traffic"] if maps_score < 0 else []
+
+    # 4. Aggregate mood
+    source_scores = [twitter_score, reddit_score, news_score, google_score, maps_score]
+    mood_score = sum(source_scores) / len(source_scores)
+    if mood_score > 0.3:
+        mood_label = "happy"
+    elif mood_score < -0.3:
+        mood_label = "tense"
+    elif maps_score < 0:
+        mood_label = "busy"
+    else:
+        mood_label = "neutral"
+
+    return {
+        "location": location,
+        "datetime": datetime_str,
+        "mood_label": mood_label,
+        "mood_score": round(mood_score, 2),
+        "source_breakdown": {
+            "twitter": {"score": round(twitter_score, 2), "top_keywords": twitter_keywords},
+            "reddit": {"score": round(reddit_score, 2), "top_keywords": reddit_keywords},
+            "news": {"score": round(news_score, 2), "top_keywords": news_keywords},
+            "google_search": {"score": round(google_score, 2), "top_keywords": google_keywords},
+            "maps": {"score": round(maps_score, 2), "top_keywords": maps_keywords},
+        }
+    }
 
 if __name__ == "__main__":
     import uvicorn
