@@ -56,9 +56,9 @@ def fetch_twitter_posts(location: str, topic: str, limit: int = 5) -> Dict[str, 
         processed_tweets = []
         if tweets_data:
             # Create a dictionary to quickly look up user info by author_id
-            users_by_id = { #TODO: make sure includes data isnt none
-                user["id"]: user["username"] for user in includes_data.get("users", [])
-            }
+            users_by_id = {}
+            if includes_data and "users" in includes_data:
+                users_by_id = {user["id"]: user["username"] for user in includes_data["users"]}
 
             for tweet in tweets_data:
                 processed_tweets.append(

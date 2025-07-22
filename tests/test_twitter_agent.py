@@ -1,0 +1,31 @@
+import unittest
+from unittest.mock import patch, MagicMock
+from agents.twitter_agent import fetch_twitter_posts, TwitterAgent
+
+class TestTwitterAgent(unittest.TestCase):
+    @patch('agents.twitter_agent.tweepy.Client')
+    def test_fetch_twitter_posts_success(self, mock_client):
+        mock_instance = MagicMock()
+        mock_client.return_value = mock_instance
+        mock_instance.search_recent_tweets.return_value.data = [
+            MagicMock(text='tweet1', id='1', created_at='2024-01-01', author_id='a')
+        ]
+        mock_instance.search_recent_tweets.return_value.includes = {'users': [{'id': 'a', 'username': 'user1'}]}
+        result = fetch_twitter_posts('NYC', 'news', 1)
+        self.assertIn('tweets', result)
+        self.assertEqual(result['tweets'][0]['text'], 'tweet1')
+
+    @patch('agents.twitter_agent.tweepy.Client')
+    def test_fetch_twitter_posts_no_token(self, mock_client):
+        with patch('agents.twitter_agent.BEARER_TOKEN', None):
+            result = fetch_twitter_posts('NYC', 'news', 1)
+            self.assertIn('error', result)
+
+    @patch('agents.twitter_agent.tweepy.Client')
+    def test_fetch_twitter_posts_api_error(self, mock_client):
+        mock_client.side_effect = Exception('fail')
+        result = fetch_twitter_posts('NYC', 'news', 1)
+        self.assertIn('error', result)
+
+if __name__ == '__main__':
+    unittest.main() 
