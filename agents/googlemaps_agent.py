@@ -11,7 +11,6 @@ from vertexai.generative_models import (
     Part,
 )
 from shared.utils.logger import log_event
-import requests
 
 load_dotenv()
 

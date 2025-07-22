@@ -1,13 +1,13 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 def aggregate_api_results(
-    reddit_data: Dict[str, Any] = None,
-    twitter_data: Dict[str, Any] = None,
-    news_data: Dict[str, Any] = None,
-    maps_data: Dict[str, Any] = None,
-    firestore_data: List[Dict[str, Any]] = None,
-    rag_data: List[str] = None,
-    google_search_data: List[Dict[str, Any]] = None
+    reddit_data: Optional[Dict[str, Any]] = None,
+    twitter_data: Optional[Dict[str, Any]] = None,
+    news_data: Optional[Dict[str, Any]] = None,
+    maps_data: Optional[Dict[str, Any]] = None,
+    firestore_data: Optional[List[Dict[str, Any]]] = None,
+    rag_data: Optional[List[str]] = None,
+    google_search_data: Optional[List[Dict[str, Any]]] = None
 ) -> Dict[str, Any]:
     """
     Aggregate and normalize results from multiple APIs into a unified structure.
