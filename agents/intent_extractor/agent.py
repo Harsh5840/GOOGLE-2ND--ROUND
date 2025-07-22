@@ -2,6 +2,8 @@
 
 from vertexai.generative_models import GenerativeModel
 import re
+import json
+from shared.utils.logger import log_event
 
 gemini = GenerativeModel("gemini-2.0-flash")
 
@@ -31,10 +33,13 @@ User: "{message}"
         # Naive safety net if Gemini wraps in markdown
         json_match = re.search(r'\{[\s\S]+\}', text)
         if json_match:
-            return eval(json_match.group(0))  # Quick dev shortcut
+            try:
+                return json.loads(json_match.group(0))
+            except Exception as e:
+                log_event("IntentExtractor", f"JSON parse error: {e} | text: {text}")
 
     except Exception as e:
-        print("[IntentExtractor] Error:", e)
+        log_event("IntentExtractor", f"Error: {e}")
 
     return {
         "intent": "unknown",
