@@ -1,14 +1,15 @@
+import sys
+import os
 from dotenv import load_dotenv
 load_dotenv()
-
-import os
-from fastapi import FastAPI
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+from fastapi import FastAPI 
 from pydantic import BaseModel
 from google.cloud import aiplatform
 from shared.utils.logger import log_event
 from fastapi import Query
 from textblob import TextBlob
-from typing import Optional, Dict, Any, Tuple, List
+from typing import Optional
 
 from agents.reddit_agent import fetch_reddit_posts
 from agents.twitter_agent import fetch_twitter_posts
