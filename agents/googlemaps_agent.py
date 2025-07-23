@@ -12,6 +12,8 @@ from vertexai.generative_models import (
 from shared.utils.logger import log_event
 import traceback
 
+GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
+gmaps = googlemaps.Client(key=GOOGLE_MAPS_API_KEY)
 
 # Log googlemaps version
 try:
@@ -34,13 +36,11 @@ def get_best_route(current_location: str, destination: str, mode: str = "driving
               Returns a dictionary with an 'error' key if an error occurs.
     """
 
-    GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
     if not GOOGLE_MAPS_API_KEY:
         log_event("GoogleMapsAgent", "GOOGLE_MAPS_API_KEY not set.")
         return {"error": "Google Maps API key not configured."}
 
     try:
-        gmaps = googlemaps.Client(key=GOOGLE_MAPS_API_KEY)
 
         params = {
             "origin": current_location,
@@ -87,7 +87,6 @@ def get_must_visit_places_nearby(location: str, max_results: int = 3) -> list:
     If location is empty, returns a dict with an 'error' key.
     """
 
-    GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
     if not GOOGLE_MAPS_API_KEY:
         log_event("GoogleMapsAgent", "GOOGLE_MAPS_API_KEY not set.")
         return {"error": "Google Maps API key not set."}
@@ -95,7 +94,6 @@ def get_must_visit_places_nearby(location: str, max_results: int = 3) -> list:
         log_event("GoogleMapsAgent", f"get_must_visit_places_nearby called with empty location: '{location}'")
         return {"error": "Location is required to find must-visit places."}
     try:
-        gmaps = googlemaps.Client(key=GOOGLE_MAPS_API_KEY)
         log_event("GoogleMapsAgent", f"Geocoding location: '{location}'")
         geocode = gmaps.geocode(location)
         log_event("GoogleMapsAgent", f"Geocode result: {geocode}")

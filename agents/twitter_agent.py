@@ -21,6 +21,7 @@ ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
 ACCESS_TOKEN_SECRET = os.getenv("TWITTER_ACCESS_TOKEN_SECRET")
 
 
+
 def fetch_twitter_posts(location: str, topic: str, limit: int = 5) -> Dict[str, Any]:
     """
     Uses Twitter API v2 via Tweepy to search recent tweets based on location + topic.
