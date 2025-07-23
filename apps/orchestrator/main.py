@@ -62,27 +62,35 @@ def city_chatbot_orchestrator(message: str) -> str:
         log_event("Orchestrator", "No location provided for POI intent. Prompting user.")
         return "Please specify a location (city or area) to find the best places to visit."
 
-    # Step 2: Fetch external data sources
-    # Only call Google Maps if location is present
-    maps_data = get_best_route(location, topic) if location.strip() else {}
+    # Step 2: Fetch external data sources based on intent
+    maps_data = {}
+    must_visit_places = []
+    if intent == "poi":
+        # Only call must_visit for POI intent
+        must_visit_places = get_must_visit_places_nearby(location, max_results=3) if location.strip() else []
+    elif intent == "route" and location.strip() and topic.strip():
+        # Only call best_route if both location and topic are present for route intent
+        maps_data = get_best_route(location, topic)
+    # For other intents, skip both Google Maps calls unless both params are present (optional)
+
     if isinstance(maps_data, dict) and "error" in maps_data:
         log_event("Orchestrator", f"Google Maps error: {maps_data['error']}")
         maps_data = {}
-    try:
-        must_visit_places = get_must_visit_places_nearby(location, max_results=3) if location.strip() else []
-        if not isinstance(must_visit_places, list):
-            log_event(
-                "Orchestrator",
-                f"get_must_visit_places_nearby returned non-list: {must_visit_places}",
-            )
-            must_visit_places = []
-    except Exception as e:
-        log_event("Orchestrator", f"Error in get_must_visit_places_nearby: {e}")
+    if must_visit_places and not isinstance(must_visit_places, list):
+        log_event(
+            "Orchestrator",
+            f"get_must_visit_places_nearby returned non-list: {must_visit_places}",
+        )
         must_visit_places = []
-    news_data = fetch_city_news(location)
-    rag_data = get_rag_fallback(location, topic)
-    reddit_data = fetch_reddit_posts(location, topic)
-    twitter_data = fetch_twitter_posts(location, topic)
+
+    try:
+        news_data = fetch_city_news(location)
+        rag_data = get_rag_fallback(location, topic)
+        reddit_data = fetch_reddit_posts(location, topic)
+        twitter_data = fetch_twitter_posts(location, topic)
+    except Exception as e:
+        log_event("Orchestrator", f"Error fetching external data: {e}")
+        news_data = rag_data = reddit_data = twitter_data = []
 
     log_event("Orchestrator", "Data from tools fetched successfully.")
 

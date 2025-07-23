@@ -12,7 +12,6 @@ from vertexai.generative_models import (
 from shared.utils.logger import log_event
 import traceback
 
-GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
 
 # Log googlemaps version
 try:
@@ -34,19 +33,27 @@ def get_best_route(current_location: str, destination: str, mode: str = "driving
         dict: Route summary, duration (with and without traffic), distance, and step-by-step directions.
               Returns a dictionary with an 'error' key if an error occurs.
     """
+
+    GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
     if not GOOGLE_MAPS_API_KEY:
         log_event("GoogleMapsAgent", "GOOGLE_MAPS_API_KEY not set.")
         return {"error": "Google Maps API key not configured."}
 
     try:
         gmaps = googlemaps.Client(key=GOOGLE_MAPS_API_KEY)
-        directions_result = gmaps.directions(
-            origin=current_location,
-            destination=destination,
-            mode=mode,
-            departure_time="now",
-            traffic_model="best_guess",
-        )
+
+        params = {
+            "origin": current_location,
+            "destination": destination,
+            "mode": mode,
+        }
+
+        if mode == "driving":
+            params["departure_time"] = "now"
+            params["traffic_model"] = "best_guess"
+
+        directions_result = gmaps.directions(**params)
+
         if not directions_result:
             return {"error": "No route found."}
         route = directions_result[0]
@@ -79,6 +86,8 @@ def get_must_visit_places_nearby(location: str, max_results: int = 3) -> list:
     Returns a list of dicts with name, type, rating, address, place_id, photo_url, open_now.
     If location is empty, returns a dict with an 'error' key.
     """
+
+    GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
     if not GOOGLE_MAPS_API_KEY:
         log_event("GoogleMapsAgent", "GOOGLE_MAPS_API_KEY not set.")
         return {"error": "Google Maps API key not set."}
@@ -100,7 +109,8 @@ def get_must_visit_places_nearby(location: str, max_results: int = 3) -> list:
         try:
             places = gmaps.places_nearby(
                 location=(lat, lng),
-                radius=1000
+                radius=1000,
+                keyword='point of interest'  # <-- ADD THIS
             )
         except Exception as e:
             log_event("GoogleMapsAgent", f"places_nearby failed for '{location}': {e}")
