@@ -34,6 +34,12 @@ def fetch_reddit_posts(subreddit: str, limit: int = 5) -> Dict[str, Any]:
         log_event("RedditAgent", "Error: Reddit credentials not set.")
         return {"error": "Reddit API credentials not configured."}
 
+    # Ensure limit is always an integer
+    try:
+        limit = int(limit)
+    except Exception:
+        limit = 5
+
     actual_limit = min(limit, 100)
     try:
         reddit = praw.Reddit(
