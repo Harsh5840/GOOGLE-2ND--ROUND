@@ -12,7 +12,10 @@ from typing import Optional, Dict, Any, Tuple, List
 
 from agents.reddit_agent import fetch_reddit_posts
 from agents.twitter_agent import fetch_twitter_posts
-from agents.firestore_agent import fetch_firestore_reports
+from agents.firestore_agent import (
+    fetch_firestore_reports, store_travel_time_record,
+    store_user_query_history, fetch_similar_user_queries
+)
 from agents.rag_search import get_rag_fallback
 from agents.response_agent import generate_final_response
 from agents.intent_extractor.agent import extract_intent
@@ -96,11 +99,27 @@ def city_chatbot_orchestrator(message: str) -> str:
 async def chat_router(query: UserQuery):
     log_event("Orchestrator", f"Received: {query.message}")
     # Use the unified orchestrator logic
-    reply = city_chatbot_orchestrator(query.message)
-    # Extract intent/entities again for response (could be optimized)
+    # 1. Check for similar past queries for this user
+    similar = fetch_similar_user_queries(query.user_id, query.message, limit=1)
+    # 2. Extract intent/entities
     intent_data = extract_intent(query.message)
     intent = intent_data["intent"]
     entities = intent_data["entities"]
+    location = entities.get("location", "")
+    topic = entities.get("topic", "")
+    # 3. If a required parameter (like origin) is missing, try to fill from history
+    if intent == "route" and not entities.get("origin") and similar:
+        past_entities = similar[0]["response_data"].get("entities", {})
+        if past_entities.get("origin"):
+            entities["origin"] = past_entities["origin"]
+    # 4. Run orchestrator
+    reply = city_chatbot_orchestrator(query.message)
+    # 5. Store this query and response in Firestore
+    store_user_query_history(query.user_id, query.message, {
+        "intent": intent,
+        "entities": entities,
+        "reply": reply
+    })
     return BotResponse(
         intent=intent,
         entities=entities,
