@@ -1,4 +1,5 @@
 /.venv/
+/.env
 /shell.nix
 __pycache__/
 venv/
