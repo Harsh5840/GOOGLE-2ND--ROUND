@@ -13,3 +13,4 @@ venv/
 .env.production
 
 .pytest_cache/
+/cityscape-466810-614cba022fdc.json
