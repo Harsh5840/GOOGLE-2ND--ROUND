@@ -14,13 +14,6 @@ from typing import Optional
 
 from agents.reddit_agent import fetch_reddit_posts
 from agents.twitter_agent import fetch_twitter_posts
-<<<<<<< Updated upstream
-from agents.firestore_agent import (
-    fetch_firestore_reports, store_travel_time_record,
-    store_user_query_history, fetch_similar_user_queries
-)
-=======
->>>>>>> Stashed changes
 from agents.rag_search import get_rag_fallback
 from agents.response_agent import generate_final_response
 from agents.intent_extractor.agent import extract_intent
