@@ -77,13 +77,14 @@ def get_must_visit_places_nearby(location: str, max_results: int = 3) -> list:
     """
     Uses Google Maps Places API to find top-rated places (any type) near a location.
     Returns a list of dicts with name, type, rating, address, place_id, photo_url, open_now.
+    If location is empty, returns a dict with an 'error' key.
     """
     if not GOOGLE_MAPS_API_KEY:
         log_event("GoogleMapsAgent", "GOOGLE_MAPS_API_KEY not set.")
-        return []
+        return {"error": "Google Maps API key not set."}
     if not location or not location.strip():
         log_event("GoogleMapsAgent", f"get_must_visit_places_nearby called with empty location: '{location}'")
-        return []
+        return {"error": "Location is required to find must-visit places."}
     try:
         gmaps = googlemaps.Client(key=GOOGLE_MAPS_API_KEY)
         log_event("GoogleMapsAgent", f"Geocoding location: '{location}'")
@@ -144,7 +145,7 @@ def get_must_visit_places_nearby(location: str, max_results: int = 3) -> list:
         log_event("GoogleMapsAgent", f"Error in get_must_visit_places_nearby: {e}")
         log_event("GoogleMapsAgent", traceback.format_exc())
         log_event("GoogleMapsAgent", f"Params: location='{location}'")
-        return []
+        return {"error": f"Exception occurred: {e}"}
 
 get_best_route_tool_declaration = FunctionDeclaration(
     name="get_best_route",

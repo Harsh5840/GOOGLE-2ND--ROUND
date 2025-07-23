@@ -1,5 +1,3 @@
-# agents/intent_extractor/agent.py
-
 from vertexai.generative_models import GenerativeModel
 import re
 import json

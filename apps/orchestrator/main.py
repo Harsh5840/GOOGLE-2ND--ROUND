@@ -57,13 +57,19 @@ def city_chatbot_orchestrator(message: str) -> str:
         "Orchestrator", f"Intent: {intent} | Location: {location} | Topic: {topic}"
     )
 
+    # Step 1.5: If intent is 'poi' (places of interest) and location is missing, prompt user
+    if intent == "poi" and not location.strip():
+        log_event("Orchestrator", "No location provided for POI intent. Prompting user.")
+        return "Please specify a location (city or area) to find the best places to visit."
+
     # Step 2: Fetch external data sources
-    maps_data = get_best_route(location, topic)
+    # Only call Google Maps if location is present
+    maps_data = get_best_route(location, topic) if location.strip() else {}
     if isinstance(maps_data, dict) and "error" in maps_data:
         log_event("Orchestrator", f"Google Maps error: {maps_data['error']}")
         maps_data = {}
     try:
-        must_visit_places = get_must_visit_places_nearby(location, max_results=3)
+        must_visit_places = get_must_visit_places_nearby(location, max_results=3) if location.strip() else []
         if not isinstance(must_visit_places, list):
             log_event(
                 "Orchestrator",
