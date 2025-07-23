@@ -1,5 +1,4 @@
 import os
-from dotenv import load_dotenv
 from typing import Dict, Any
 import googlemaps
 import vertexai
@@ -11,12 +10,16 @@ from vertexai.generative_models import (
     Part,
 )
 from shared.utils.logger import log_event
-
-load_dotenv()
+import traceback
 
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
-GOOGLE_SEARCH_API_KEY = os.getenv("GOOGLE_SEARCH_API_KEY")
-GOOGLE_SEARCH_ENGINE_ID = os.getenv("GOOGLE_SEARCH_ENGINE_ID")
+
+# Log googlemaps version
+try:
+    import pkg_resources
+    log_event("GoogleMapsAgent", f"googlemaps version: {pkg_resources.get_distribution('googlemaps').version}")
+except Exception as e:
+    log_event("GoogleMapsAgent", f"Could not determine googlemaps version: {e}")
 
 def get_best_route(current_location: str, destination: str, mode: str = "driving") -> Dict[str, Any]:
     """
@@ -78,21 +81,46 @@ def get_must_visit_places_nearby(location: str, max_results: int = 3) -> list:
     if not GOOGLE_MAPS_API_KEY:
         log_event("GoogleMapsAgent", "GOOGLE_MAPS_API_KEY not set.")
         return []
+    if not location or not location.strip():
+        log_event("GoogleMapsAgent", f"get_must_visit_places_nearby called with empty location: '{location}'")
+        return []
     try:
         gmaps = googlemaps.Client(key=GOOGLE_MAPS_API_KEY)
-        # Geocode the location to lat/lng
+        log_event("GoogleMapsAgent", f"Geocoding location: '{location}'")
         geocode = gmaps.geocode(location)
-        if not geocode:
+        log_event("GoogleMapsAgent", f"Geocode result: {geocode}")
+        if not geocode or not geocode[0].get("geometry"):
+            log_event("GoogleMapsAgent", f"Geocoding failed for location: '{location}'")
             return []
-        latlng = geocode[0]["geometry"]["location"]
-        # Search for top-rated places nearby (any type)
-        places = gmaps.places_nearby(
-            location=(latlng["lat"], latlng["lng"]),
-            radius=1000,  # meters
-            rank_by=None,
-            type=None,
-            open_now=False
-        )
+        lat = float(geocode[0]["geometry"]["location"]["lat"])
+        lng = float(geocode[0]["geometry"]["location"]["lng"])
+        log_event("GoogleMapsAgent", f"places_nearby params: location=({lat}, {lng}), radius=1000")
+        # Only include required parameters, remove open_now for testing
+        try:
+            places = gmaps.places_nearby(
+                location=(lat, lng),
+                radius=1000
+            )
+        except Exception as e:
+            log_event("GoogleMapsAgent", f"places_nearby failed for '{location}': {e}")
+            log_event("GoogleMapsAgent", traceback.format_exc())
+            # Try a different location as a test
+            try:
+                log_event("GoogleMapsAgent", "Trying fallback location: 'New York'")
+                geocode_ny = gmaps.geocode("New York")
+                if geocode_ny and geocode_ny[0].get("geometry"):
+                    lat_ny = float(geocode_ny[0]["geometry"]["location"]["lat"])
+                    lng_ny = float(geocode_ny[0]["geometry"]["location"]["lng"])
+                    log_event("GoogleMapsAgent", f"places_nearby params: location=({lat_ny}, {lng_ny}), radius=1000")
+                    places_ny = gmaps.places_nearby(
+                        location=(lat_ny, lng_ny),
+                        radius=1000
+                    )
+                    log_event("GoogleMapsAgent", f"places_nearby result for 'New York': {places_ny}")
+            except Exception as e2:
+                log_event("GoogleMapsAgent", f"Fallback places_nearby failed: {e2}")
+                log_event("GoogleMapsAgent", traceback.format_exc())
+            return []
         results = places.get("results", [])
         # Sort by rating, then user_ratings_total
         results = sorted(results, key=lambda x: (x.get("rating", 0), x.get("user_ratings_total", 0)), reverse=True)
@@ -114,6 +142,8 @@ def get_must_visit_places_nearby(location: str, max_results: int = 3) -> list:
         return must_visit
     except Exception as e:
         log_event("GoogleMapsAgent", f"Error in get_must_visit_places_nearby: {e}")
+        log_event("GoogleMapsAgent", traceback.format_exc())
+        log_event("GoogleMapsAgent", f"Params: location='{location}'")
         return []
 
 get_best_route_tool_declaration = FunctionDeclaration(

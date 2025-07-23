@@ -5,7 +5,6 @@ def aggregate_api_results(
     twitter_data: Optional[Dict[str, Any]] = None,
     news_data: Optional[Dict[str, Any]] = None,
     maps_data: Optional[Dict[str, Any]] = None,
-    firestore_data: Optional[List[Dict[str, Any]]] = None,
     rag_data: Optional[List[str]] = None,
     google_search_data: Optional[List[Dict[str, Any]]] = None
 ) -> Dict[str, Any]:
@@ -17,9 +16,9 @@ def aggregate_api_results(
         "twitter": twitter_data.get("tweets") if twitter_data and "tweets" in twitter_data else [],
         "news": news_data.get("articles") if news_data and "articles" in news_data else [],
         "maps": maps_data if maps_data else {},
-        "firestore": firestore_data if firestore_data else [],
         "rag": rag_data if rag_data else [],
         "google_search": google_search_data if google_search_data else [],
     }
     # Optionally, deduplicate or prioritize here
+        # "firestore": firestore_data if firestore_data else [],
     return unified
