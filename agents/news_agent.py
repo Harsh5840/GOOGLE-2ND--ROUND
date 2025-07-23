@@ -16,7 +16,6 @@ load_dotenv()
 
 NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 
-
 def fetch_city_news(city: str, limit: int = 5) -> Dict[str, Any]:
     """
     Fetches news articles relevant to a specific city using NewsAPI.

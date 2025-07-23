@@ -1,2 +1,3 @@
 /.venv/
 /shell.nix
+__pycache__/

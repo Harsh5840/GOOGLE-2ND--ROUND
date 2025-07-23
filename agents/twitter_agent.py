@@ -15,6 +15,10 @@ from shared.utils.logger import log_event
 load_dotenv()
 
 BEARER_TOKEN = os.getenv("TWITTER_BEARER_TOKEN")
+CONSUMER_KEY = os.getenv("TWITTER_CONSUMER_KEY")
+CONSUMER_SECRET = os.getenv("TWITTER_CONSUMER_SECRET")
+ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
+ACCESS_TOKEN_SECRET = os.getenv("TWITTER_ACCESS_TOKEN_SECRET")
 
 
 def fetch_twitter_posts(location: str, topic: str, limit: int = 5) -> Dict[str, Any]:
