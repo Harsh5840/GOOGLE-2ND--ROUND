@@ -9,3 +9,9 @@ google-cloud-firestore
 praw
 tweepy
 googlemaps
+newsapi-python
+google-cloud-texttospeech
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+vertexai
