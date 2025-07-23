@@ -20,24 +20,37 @@ CONSUMER_SECRET = os.getenv("TWITTER_CONSUMER_SECRET")
 ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
 ACCESS_TOKEN_SECRET = os.getenv("TWITTER_ACCESS_TOKEN_SECRET")
 
+import os
 
 
-def fetch_twitter_posts(location: str, topic: str, limit: int = 5) -> Dict[str, Any]:
+def fetch_twitter_posts(location: str, topic: str, limit: int = 10) -> Dict[str, Any]:
     """
     Uses Twitter API v2 via Tweepy to search recent tweets based on location + topic.
 
     Args:
         location (str): The geographical location to search for tweets (e.g., "New Delhi").
         topic (str): The topic or keyword to search for (e.g., "cricket").
-        limit (int): The maximum number of tweets to fetch (default is 5, max 100).
+        limit (int): The maximum number of tweets to fetch (default is 2, max 100).
 
     Returns:
         dict: A dictionary containing a list of tweets with 'text', 'id', 'created_at', 'author_id'.
               Returns a dictionary with an 'error' key if an error occurs.
     """
+    # Check all required credentials
+    missing = []
     if not BEARER_TOKEN:
-        log_event("TwitterAgent", "Error: TWITTER_BEARER_TOKEN not set.")
-        return {"error": "Twitter API token not configured."}
+        missing.append("TWITTER_BEARER_TOKEN")
+    if not CONSUMER_KEY:
+        missing.append("TWITTER_CONSUMER_KEY")
+    if not CONSUMER_SECRET:
+        missing.append("TWITTER_CONSUMER_SECRET")
+    if not ACCESS_TOKEN:
+        missing.append("TWITTER_ACCESS_TOKEN")
+    if not ACCESS_TOKEN_SECRET:
+        missing.append("TWITTER_ACCESS_TOKEN_SECRET")
+    if missing:
+        log_event("TwitterAgent", f"Error: Missing Twitter credentials: {', '.join(missing)}")
+        return {"error": f"Twitter API credentials missing: {', '.join(missing)}"}
 
     client = tweepy.Client(BEARER_TOKEN)
 
@@ -85,7 +98,10 @@ def fetch_twitter_posts(location: str, topic: str, limit: int = 5) -> Dict[str, 
         }
 
     except tweepy.TweepyException as e:
-        error_msg = f"Tweepy API Error: {e}"
+        if '429' in str(e) or 'Too Many Requests' in str(e):
+            error_msg = "Twitter rate limit reached. Please try again in a few minutes."
+        else:
+            error_msg = f"Tweepy API Error: {e}"
         log_event("TwitterAgent", error_msg)
         return {"error": error_msg}
     except Exception as e:
