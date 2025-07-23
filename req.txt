@@ -18,3 +18,4 @@ vertexai
 google-adk
 setuptools
 textblob
+
