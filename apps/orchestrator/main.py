@@ -1,9 +1,14 @@
 import os
+from dotenv import load_dotenv
+load_dotenv()
+
+import vertexai
+vertexai.init(
+    project=os.getenv("GOOGLE_CLOUD_PROJECT"),
+    location=os.getenv("GOOGLE_CLOUD_LOCATION")
+)
 
 import sys
-from dotenv import load_dotenv
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 from fastapi import FastAPI
 from pydantic import BaseModel
 from google.cloud import aiplatform
@@ -38,9 +43,9 @@ class BotResponse(BaseModel):
     reply: str
 
 
-def city_chatbot_orchestrator(message: str) -> str:
+async def city_chatbot_orchestrator(message: str) -> str:
     # Use the new Google ADK agent for all queries
-    return run_city_agent(message)
+    return await run_city_agent(message)
 
 
 @app.post("/chat", response_model=BotResponse)
@@ -55,7 +60,7 @@ async def chat_router(query: UserQuery):
     topic = entities.get("topic", "")
     # 2. If a required parameter (like origin) is missing, try to fill from history (feature removed)
     # 3. Run orchestrator
-    reply = city_chatbot_orchestrator(query.message)
+    reply = await city_chatbot_orchestrator(query.message)
     # 4. Store this query and response in Firestore (feature removed)
     return BotResponse(intent=intent, entities=entities, reply=reply)
 
@@ -91,7 +96,6 @@ async def location_mood(
 
 if __name__ == "__main__":
     import uvicorn
-    load_dotenv()
     print("GOOGLE_MAPS_API_KEY (startup):", repr(os.getenv("GOOGLE_MAPS_API_KEY")))
 
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

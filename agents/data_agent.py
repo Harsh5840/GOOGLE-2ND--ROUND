@@ -24,20 +24,19 @@ def create_data_agent():
         tools=tools
     )
 
-# Dynamic ADK-based run function
-def run_data_agent(query: str, context: dict = None) -> dict:
+# Async ADK-based run function
+async def run_data_agent(query: str, context: dict = None) -> dict:
     agent = create_data_agent()
     runner = Runner(agent=agent, app_name="data_agent", session_service=session_service)
     user_id = context.get("user_id", "testuser") if context else "testuser"
     session_id = context.get("session_id", str(uuid.uuid4())) if context else str(uuid.uuid4())
     content = types.Content(role="user", parts=[types.Part(text=query)])
-    events = runner.run(
+    response_text = ""
+    async for event in runner.run_async(
         user_id=user_id,
         session_id=session_id,
         new_message=content
-    )
-    response_text = ""
-    for event in events:
+    ):
         if hasattr(event, "text") and event.text:
             response_text += event.text
     return {"data_agent_response": response_text} 
