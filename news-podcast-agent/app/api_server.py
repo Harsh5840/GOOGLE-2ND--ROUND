@@ -10,15 +10,18 @@ import uuid
 from datetime import datetime
 from typing import Optional, Dict, Any
 from pathlib import Path
+import logging
+logging.basicConfig(level=logging.INFO)
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks, File, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from app.config import config
-from .tools import synthesize_speech, fetch_local_news
-from .podcast_wrapper import PodcastAgent
+from config import config
+from app.tools import synthesize_speech, fetch_local_news
+from app.podcast_wrapper import PodcastAgent
+from app.utils.files import get_output_dir
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -68,52 +71,42 @@ class TTSRequest(BaseModel):
     speaking_rate: float = Field(default=0.95, ge=0.5, le=2.0, description="Speaking rate")
 
 # Utility functions
-def get_output_dir() -> Path:
-    """Get or create output directory for generated files."""
-    output_dir = Path("outputs")
-    output_dir.mkdir(exist_ok=True)
-    return output_dir
-
 async def generate_podcast_async(job_id: str, city: str, duration_minutes: int, voice: str, speaking_rate: float):
     """Background task to generate podcast."""
     try:
+        logging.info(f"[generate_podcast_async] Starting podcast generation for job_id={job_id}, city={city}, duration={duration_minutes}, voice={voice}, speaking_rate={speaking_rate}")
         # Update status to processing
         job_status[job_id].update({
             "status": "processing",
             "progress": 10,
             "message": "Fetching local news..."
         })
-
         # Initialize podcast agent
         agent = PodcastAgent()
-        
         # Update progress
         job_status[job_id].update({
             "progress": 30,
             "message": "Generating podcast script..."
         })
-
         # Generate podcast script
         script = await agent.generate_podcast_script(city, duration_minutes)
-        
+        logging.info(f"[generate_podcast_async] Podcast script generated for job_id={job_id}")
         job_status[job_id].update({
             "progress": 70,
             "message": "Converting script to audio...",
             "script": script
         })
-
         # Generate audio file
         output_dir = get_output_dir()
         audio_filename = f"podcast_{job_id}.mp3"
         audio_path = output_dir / audio_filename
-        
+        logging.info(f"[generate_podcast_async] Saving podcast audio to {audio_path}")
         audio_file = synthesize_speech(
             text=script,
             output_path=str(audio_path),
             voice=voice,
             speaking_rate=speaking_rate
         )
-
         # Update status to completed
         job_status[job_id].update({
             "status": "completed",
@@ -122,8 +115,9 @@ async def generate_podcast_async(job_id: str, city: str, duration_minutes: int, 
             "completed_at": datetime.now(),
             "audio_file": audio_filename
         })
-
+        logging.info(f"[generate_podcast_async] Podcast generation completed for job_id={job_id}, file={audio_filename}")
     except Exception as e:
+        logging.error(f"[generate_podcast_async] Failed to generate podcast for job_id={job_id}: {e}")
         # Update status to failed
         job_status[job_id].update({
             "status": "failed",
@@ -137,6 +131,7 @@ async def generate_podcast_async(job_id: str, city: str, duration_minutes: int, 
 
 @app.get("/")
 async def root():
+    logging.info("[API] Root endpoint called")
     """Root endpoint with API information."""
     return {
         "message": "News Podcast Agent API",
@@ -151,6 +146,8 @@ async def root():
 
 @app.post("/api/v1/podcast/generate", response_model=PodcastResponse)
 async def generate_podcast(request: PodcastRequest, background_tasks: BackgroundTasks):
+    logging.info(f"[API] /api/v1/podcast/generate called with city={request.city}, duration={request.duration_minutes}, voice={request.voice}, rate={request.speaking_rate}")
+    print(f"[DEBUG] Received podcast generation request: city={request.city}, duration={request.duration_minutes}, voice={request.voice}, rate={request.speaking_rate}")
     """Generate a news podcast for the specified city."""
     
     # Generate unique job ID
@@ -187,6 +184,7 @@ async def generate_podcast(request: PodcastRequest, background_tasks: Background
 
 @app.get("/api/v1/jobs/{job_id}", response_model=JobStatus)
 async def get_job_status(job_id: str):
+    logging.info(f"[API] /api/v1/jobs/{{job_id}} called for job_id={job_id}")
     """Get the status of a podcast generation job."""
     
     if job_id not in job_status:
@@ -196,6 +194,7 @@ async def get_job_status(job_id: str):
 
 @app.get("/api/v1/jobs")
 async def list_jobs():
+    logging.info("[API] /api/v1/jobs called")
     """List all jobs with their current status."""
     return {
         "jobs": list(job_status.values()),
@@ -204,14 +203,16 @@ async def list_jobs():
 
 @app.get("/api/v1/files/{filename}")
 async def download_file(filename: str):
-    """Download generated audio files."""
-    
+    logging.info(f"[API] /api/v1/files/{{filename}} called for filename={filename}")
     output_dir = get_output_dir()
     file_path = output_dir / filename
-    
+    print(f"[DEBUG] Attempting to serve file: {file_path} (exists: {file_path.exists()}, size: {file_path.stat().st_size if file_path.exists() else 'N/A'})")
     if not file_path.exists():
+        logging.error(f"[API] File not found: {file_path}")
         raise HTTPException(status_code=404, detail="File not found")
-    
+    if file_path.stat().st_size == 0:
+        logging.error(f"[API] File is empty: {file_path}")
+        raise HTTPException(status_code=500, detail="File is empty (TTS generation may have failed)")
     return FileResponse(
         path=str(file_path),
         filename=filename,
@@ -220,6 +221,7 @@ async def download_file(filename: str):
 
 @app.post("/api/v1/tts")
 async def text_to_speech(request: TTSRequest):
+    logging.info(f"[API] /api/v1/tts called with voice={request.voice}, rate={request.speaking_rate}")
     """Convert text to speech using Google TTS."""
     
     try:
@@ -247,6 +249,7 @@ async def text_to_speech(request: TTSRequest):
 
 @app.get("/api/v1/news/{city}")
 async def get_local_news(city: str, limit: int = 10):
+    logging.info(f"[API] /api/v1/news/{{city}} called for city={city}, limit={limit}")
     """Get local news articles for a city."""
     
     try:
@@ -262,6 +265,7 @@ async def get_local_news(city: str, limit: int = 10):
 
 @app.delete("/api/v1/jobs/{job_id}")
 async def delete_job(job_id: str):
+    logging.info(f"[API] /api/v1/jobs/{{job_id}} DELETE called for job_id={job_id}")
     """Delete a job and its associated files."""
     
     if job_id not in job_status:
@@ -282,6 +286,7 @@ async def delete_job(job_id: str):
 
 @app.get("/api/v1/health")
 async def health_check():
+    logging.info("[API] /api/v1/health called")
     """Health check endpoint."""
     return {
         "status": "healthy",
@@ -306,4 +311,4 @@ async def internal_error_handler(request, exc):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=5001, reload=True)

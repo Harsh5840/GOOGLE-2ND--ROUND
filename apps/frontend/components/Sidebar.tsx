@@ -6,6 +6,8 @@ import EventFeed from "./EventFeed"
 import Link from "next/link"
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Slider } from "@/components/ui/slider"
+import { useState } from "react"
+import { generatePodcast, pollPodcastJob, getPodcastAudioUrl } from "@/lib/api"
 
 interface SidebarProps {
   isMobile: boolean
@@ -34,6 +36,28 @@ const Sidebar: React.FC<SidebarProps> = ({
   handleEventSelect,
   mobileChatExpanded,
 }) => {
+  // Podcast state
+  const [podcastLength, setPodcastLength] = useState(2)
+  const [podcastLoading, setPodcastLoading] = useState(false)
+  const [podcastError, setPodcastError] = useState<string | null>(null)
+  const [podcastAudioUrl, setPodcastAudioUrl] = useState<string | null>(null)
+  const [showPodcastDialog, setShowPodcastDialog] = useState(false)
+
+  const handleGeneratePodcast = async () => {
+    setPodcastLoading(true)
+    setPodcastError(null)
+    setPodcastAudioUrl(null)
+    try {
+      const { job_id } = await generatePodcast("New York", podcastLength)
+      const job = await pollPodcastJob(job_id)
+      setPodcastAudioUrl(getPodcastAudioUrl(job.audio_file))
+    } catch (err: any) {
+      setPodcastError(err.message || "Failed to generate podcast.")
+    } finally {
+      setPodcastLoading(false)
+    }
+  }
+
   return (
     <>
       {/* Mobile Sidebar Overlay */}
@@ -60,7 +84,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           <div className={`p-4 md:p-6 lg:p-8 ${isMobile ? "pb-8" : ""}`}>
             {/* Podcast Button */}
             <div className="mb-6 flex justify-start">
-              <Dialog>
+              <Dialog open={showPodcastDialog} onOpenChange={setShowPodcastDialog}>
                 <DialogTrigger asChild>
                   <Button
                     className={`gap-2 px-4 py-2 rounded-xl font-bold text-base shadow-lg transition-all duration-300 hover:scale-105 ${
@@ -77,28 +101,33 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Choose Podcast Length</DialogTitle>
+                    <DialogTitle>Generate City News Podcast</DialogTitle>
                     <DialogDescription>
                       Select the length (in minutes) for your podcast. Default is 2 minutes.
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="flex flex-col items-center gap-4 mt-4">
-                    <span className="font-medium">Length: <span id="podcast-length-value">2</span> min</span>
+                  <div className="flex flex-col items-center gap-4 mt-4 w-full">
+                    <span className="font-medium">Length: <span id="podcast-length-value">{podcastLength}</span> min</span>
                     <Slider
                       min={1}
                       max={10}
                       step={1}
-                      defaultValue={[2]}
+                      value={[podcastLength]}
                       onValueChange={val => {
-                        const el = document.getElementById('podcast-length-value');
-                        if (el && val && val[0]) el.textContent = val[0].toString();
+                        if (val && val[0]) setPodcastLength(val[0])
                       }}
                       className="w-3/4"
                     />
+                    <Button onClick={handleGeneratePodcast} disabled={podcastLoading} className="w-full mt-2">
+                      {podcastLoading ? "Generating..." : "Generate Podcast"}
+                    </Button>
+                    {podcastError && <div className="text-red-600 text-sm mt-2">{podcastError}</div>}
+                    {podcastAudioUrl && (
+                      <audio controls src={podcastAudioUrl} className="w-full mt-4">
+                        Your browser does not support the audio element.
+                      </audio>
+                    )}
                   </div>
-                  <DialogFooter>
-                    <Button type="submit">Confirm</Button>
-                  </DialogFooter>
                 </DialogContent>
               </Dialog>
             </div>

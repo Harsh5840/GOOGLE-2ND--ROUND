@@ -8,29 +8,41 @@ import asyncio
 from typing import Optional
 from google.adk.runners import Runner
 from google.adk.agents.invocation_context import InvocationContext
+from google.adk.sessions import InMemorySessionService
 
-from .agent import PodcastPipeline, NewsResearcher, PodcastScripter, PodcastProducer
-from .tools import fetch_local_news, synthesize_speech
+from app.agent import PodcastPipeline, NewsResearcher, PodcastScripter, PodcastProducer
+from app.tools import fetch_local_news, synthesize_speech
+from app.utils.files import get_output_dir
+import logging
 
 
 class PodcastAgent:
     """Simple wrapper for podcast generation functionality."""
     
     def __init__(self):
-        self.runner = Runner()
+        self.runner = Runner(
+            app_name="news_podcast_agent",
+            agent=PodcastPipeline,
+            session_service=InMemorySessionService()
+        )
     
     async def generate_podcast_script(self, city: str, duration_minutes: int) -> str:
+        logging.info(f"[PodcastAgent] Generating podcast script for city={city}, duration={duration_minutes}")
+        print(f"[DEBUG] PodcastAgent.generate_podcast_script called with city={city}, duration={duration_minutes}")
         """Generate a podcast script for the given city and duration."""
         
         try:
             # Step 1: Fetch local news
-            news_articles = fetch_local_news(city, limit=10)
+            news_articles = fetch_local_news(city, max_articles=10)
+            logging.info(f"[PodcastAgent] Fetched {len(news_articles)} news articles for city={city}")
             
             if not news_articles:
+                logging.warning(f"[PodcastAgent] No news found for city={city}")
                 return f"No recent news found for {city}. Please try a different city or check back later."
             
             # Step 2: Create news summary
             news_summary = self._create_news_summary(news_articles)
+            logging.info(f"[PodcastAgent] Created news summary for city={city}")
             
             # Step 3: Generate podcast script
             script_prompt = f"""
@@ -51,13 +63,15 @@ class PodcastAgent:
             # For now, create a simple script based on the news
             # In a full implementation, you would use the LLM agent here
             script = self._generate_simple_script(city, news_articles, duration_minutes)
-            
+            logging.info(f"[PodcastAgent] Generated podcast script for city={city}")
             return script
             
         except Exception as e:
+            logging.error(f"[PodcastAgent] Failed to generate podcast script for city={city}: {e}")
             raise Exception(f"Failed to generate podcast script: {str(e)}")
     
     def _create_news_summary(self, articles: list) -> str:
+        logging.info(f"[PodcastAgent] Creating news summary from {len(articles)} articles")
         """Create a summary of news articles."""
         summary_parts = []
         
@@ -70,6 +84,7 @@ class PodcastAgent:
         return "\n\n".join(summary_parts)
     
     def _generate_simple_script(self, city: str, articles: list, duration_minutes: int) -> str:
+        logging.info(f"[PodcastAgent] Generating simple script for city={city}, duration={duration_minutes}")
         """Generate a simple podcast script from news articles."""
         
         # Calculate approximate words per minute (average speaking rate is ~150 WPM)
@@ -102,18 +117,24 @@ class PodcastAgent:
         return " ".join(script_parts)
     
     async def generate_full_podcast(self, city: str, duration_minutes: int, voice: str = "en-US-Studio-O", speaking_rate: float = 0.95) -> tuple[str, str]:
+        logging.info(f"[PodcastAgent] Starting full podcast generation for city={city}, duration={duration_minutes}, voice={voice}, rate={speaking_rate}")
         """Generate both script and audio for a podcast."""
         
         # Generate script
         script = await self.generate_podcast_script(city, duration_minutes)
         
-        # Generate audio
+        # Generate audio in outputs/ directory
+        output_dir = get_output_dir()
         audio_filename = f"podcast_{city}_{duration_minutes}min.mp3"
+        audio_path = output_dir / audio_filename
+        logging.info(f"[PodcastAgent] Saving podcast audio to {audio_path}")
+        
+        # Generate audio
         audio_path = synthesize_speech(
             text=script,
-            output_path=audio_filename,
+            output_path=str(audio_path),
             voice=voice,
             speaking_rate=speaking_rate
         )
-        
-        return script, audio_path
+        logging.info(f"[PodcastAgent] Podcast audio generated at {audio_path}")
+        return script, str(audio_path)

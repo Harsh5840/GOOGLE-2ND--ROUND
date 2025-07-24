@@ -27,3 +27,33 @@ export async function getLocationMood(location: string, datetimeStr?: string): P
     throw error;
   }
 }
+
+function joinUrl(base: string, path: string) {
+  if (base.endsWith("/")) base = base.slice(0, -1);
+  if (path.startsWith("/")) path = path.slice(1);
+  return `${base}/${path}`;
+}
+
+export async function generatePodcast(city: string, duration: number, voice = "en-US-Studio-Q", speakingRate = 1.0) {
+  const response = await axios.post(joinUrl(API_BASE_URL, "/podcast/generate"), {
+    city,
+    duration_minutes: duration,
+    voice,
+    speaking_rate: speakingRate,
+  });
+  return response.data; // { job_id, ... }
+}
+
+export async function pollPodcastJob(jobId: string) {
+  // Poll until status is completed
+  while (true) {
+    const res = await axios.get(joinUrl(API_BASE_URL, `/jobs/${jobId}`));
+    if (res.data.status === "completed") return res.data;
+    if (res.data.status === "failed") throw new Error(res.data.message || "Podcast generation failed");
+    await new Promise(r => setTimeout(r, 2000));
+  }
+}
+
+export function getPodcastAudioUrl(filename: string) {
+  return joinUrl(API_BASE_URL, `/files/${filename}`);
+}
