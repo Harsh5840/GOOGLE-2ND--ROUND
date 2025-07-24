@@ -8,6 +8,7 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { Slider } from "@/components/ui/slider"
 import { useState } from "react"
 import { generatePodcast, pollPodcastJob, getPodcastAudioUrl } from "@/lib/api"
+import ThrobbingAudioCircle from "./ThrobbingAudioCircle";
 
 interface SidebarProps {
   isMobile: boolean
@@ -107,25 +108,26 @@ const Sidebar: React.FC<SidebarProps> = ({
                     </DialogDescription>
                   </DialogHeader>
                   <div className="flex flex-col items-center gap-4 mt-4 w-full">
-                    <span className="font-medium">Length: <span id="podcast-length-value">{podcastLength}</span> min</span>
-                    <Slider
-                      min={1}
-                      max={10}
-                      step={1}
-                      value={[podcastLength]}
-                      onValueChange={val => {
-                        if (val && val[0]) setPodcastLength(val[0])
-                      }}
-                      className="w-3/4"
-                    />
-                    <Button onClick={handleGeneratePodcast} disabled={podcastLoading} className="w-full mt-2">
-                      {podcastLoading ? "Generating..." : "Generate Podcast"}
-                    </Button>
-                    {podcastError && <div className="text-red-600 text-sm mt-2">{podcastError}</div>}
-                    {podcastAudioUrl && (
-                      <audio controls src={podcastAudioUrl} className="w-full mt-4">
-                        Your browser does not support the audio element.
-                      </audio>
+                    {podcastAudioUrl ? (
+                      <ThrobbingAudioCircle src={podcastAudioUrl} />
+                    ) : (
+                      <>
+                        <span className="font-medium">Length: <span id="podcast-length-value">{podcastLength}</span> min</span>
+                        <Slider
+                          min={1}
+                          max={10}
+                          step={1}
+                          value={[podcastLength]}
+                          onValueChange={val => {
+                            if (val && val[0]) setPodcastLength(val[0])
+                          }}
+                          className="w-3/4"
+                        />
+                        <Button onClick={handleGeneratePodcast} disabled={podcastLoading} className="w-full mt-2">
+                          {podcastLoading ? "Generating..." : "Generate Podcast"}
+                        </Button>
+                        {podcastError && <div className="text-red-600 text-sm mt-2">{podcastError}</div>}
+                      </>
                     )}
                   </div>
                 </DialogContent>
