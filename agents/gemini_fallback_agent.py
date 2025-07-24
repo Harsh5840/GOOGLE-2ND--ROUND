@@ -1,3 +1,11 @@
+import os
+from dotenv import load_dotenv
+load_dotenv()
+import vertexai
+vertexai.init(
+    project=os.getenv("GOOGLE_CLOUD_PROJECT"),
+    location=os.getenv("GOOGLE_CLOUD_LOCATION")
+)
 from google.adk.agents import Agent
 from google.adk.runners import Runner
 from google.genai import types

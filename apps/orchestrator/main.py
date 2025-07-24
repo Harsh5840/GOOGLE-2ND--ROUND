@@ -70,7 +70,7 @@ async def chat_router(query: UserQuery):
     elif intent == "get_best_route" and "current_location" in entities and "destination" in entities:
         tool_name = "get_best_route"
         args = {"current_location": entities["current_location"], "destination": entities["destination"], "mode": entities.get("mode", "driving")}
-    elif intent == "get_must_visit_places" and location:
+    elif intent in ["get_must_visit_places", "poi"] and location:
         tool_name = "get_must_visit_places_nearby"
         args = {"location": location, "max_results": 3}
     elif intent == "get_city_news" and location:
@@ -89,6 +89,7 @@ async def chat_router(query: UserQuery):
         # Fallback: use Gemini LLM
         tool_name = None
         args = {"query": query.message}
+    log_event("Orchestrator", f"Intent: {intent}, Entities: {entities}, Tool: {tool_name}, Args: {args}")
     # 3. Call agent_router
     reply = await agent_router(tool_name, args, fallback="gemini")
     return BotResponse(intent=intent, entities=entities, reply=reply)

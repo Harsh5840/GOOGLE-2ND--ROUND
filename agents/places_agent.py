@@ -1,3 +1,11 @@
+import os
+from dotenv import load_dotenv
+load_dotenv()
+import vertexai
+vertexai.init(
+    project=os.getenv("GOOGLE_CLOUD_PROJECT"),
+    location=os.getenv("GOOGLE_CLOUD_LOCATION")
+)
 from google.adk.agents import Agent
 from google.adk.tools import FunctionTool
 from google.adk.runners import Runner
@@ -15,14 +23,17 @@ def create_places_agent():
     )
 
 async def run_places_agent(location: str, max_results: int = 3, user_id: str = "testuser", session_id: str = None) -> str:
+    from shared.utils.logger import log_event
     agent = create_places_agent()
     runner = Runner(agent=agent, app_name=COMMON_APP_NAME, session_service=session_service)
     if not session_id:
         session_id = str(uuid.uuid4())
     await session_service.create_session(session_id=session_id, user_id=user_id, app_name=COMMON_APP_NAME)
     content = types.Content(role="user", parts=[types.Part(text=f"Get must-visit places near {location} (max {max_results})")])
+    log_event("PlacesAgent", f"Input: location={location}, max_results={max_results}")
     result = ""
     async for event in runner.run_async(user_id=user_id, session_id=session_id, new_message=content):
         if hasattr(event, 'text') and event.text:
             result += event.text
+    log_event("PlacesAgent", f"Result: {result}")
     return result 

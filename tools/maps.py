@@ -65,6 +65,7 @@ def get_must_visit_places_nearby(location: str, max_results: int = 3) -> str:
                 radius=1000,
                 keyword='point of interest'
             )
+            log_event("MapsTool", f"places_nearby raw result: {places}")
         except Exception as e:
             log_event("MapsTool", f"places_nearby failed for '{location}': {e}")
             log_event("MapsTool", traceback.format_exc())
