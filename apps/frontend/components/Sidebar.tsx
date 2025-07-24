@@ -6,6 +6,7 @@ import EventFeed from "./EventFeed"
 import Link from "next/link"
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Slider } from "@/components/ui/slider"
+import { generatePodcast, getPodcastJobStatus, getPodcastAudioUrl } from "@/lib/api";
 
 interface SidebarProps {
   isMobile: boolean
@@ -34,6 +35,44 @@ const Sidebar: React.FC<SidebarProps> = ({
   handleEventSelect,
   mobileChatExpanded,
 }) => {
+  const [podcastLength, setPodcastLength] = React.useState(2);
+  const [podcastCity, setPodcastCity] = React.useState("Bengaluru");
+  const [isPodcastLoading, setIsPodcastLoading] = React.useState(false);
+  const [jobId, setJobId] = React.useState<string | null>(null);
+  const [jobStatus, setJobStatus] = React.useState<string>("");
+  const [audioUrl, setAudioUrl] = React.useState<string | null>(null);
+
+  const pollJobStatus = async (jobId: string) => {
+    try {
+      const status = await getPodcastJobStatus(jobId);
+      setJobStatus(status.status);
+      if (status.status === "completed" && status.audio_file) {
+        setAudioUrl(getPodcastAudioUrl(status.audio_file));
+      } else if (status.status !== "completed") {
+        setTimeout(() => pollJobStatus(jobId), 2000);
+      }
+    } catch (err) {
+      setJobStatus("error");
+    }
+  };
+
+  const handleGeneratePodcast = async () => {
+    setIsPodcastLoading(true);
+    setJobStatus("");
+    setAudioUrl(null);
+    try {
+      const result = await generatePodcast(podcastCity, podcastLength);
+      setJobId(result.job_id);
+      setJobStatus("pending");
+      pollJobStatus(result.job_id);
+    } catch (err) {
+      setJobStatus("error");
+      alert("Failed to generate podcast. Please try again.");
+    } finally {
+      setIsPodcastLoading(false);
+    }
+  };
+
   return (
     <>
       {/* Mobile Sidebar Overlay */}
@@ -77,27 +116,48 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </DialogTrigger>
                 <DialogContent>
                   <DialogHeader>
-                    <DialogTitle>Choose Podcast Length</DialogTitle>
+                    <DialogTitle>Generate Podcast</DialogTitle>
                     <DialogDescription>
-                      Select the length (in minutes) for your podcast. Default is 2 minutes.
+                      Enter the city and select the length (in minutes) for your podcast. Default is 2 minutes.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="flex flex-col items-center gap-4 mt-4">
-                    <span className="font-medium">Length: <span id="podcast-length-value">2</span> min</span>
+                    <Input
+                      placeholder="Enter city (e.g., New York)"
+                      value={podcastCity}
+                      onChange={e => setPodcastCity(e.target.value)}
+                      className="mb-2"
+                    />
+                    <span className="font-medium">Length: <span id="podcast-length-value">{podcastLength}</span> min</span>
                     <Slider
                       min={1}
                       max={10}
                       step={1}
                       defaultValue={[2]}
+                      value={[podcastLength]}
                       onValueChange={val => {
-                        const el = document.getElementById('podcast-length-value');
-                        if (el && val && val[0]) el.textContent = val[0].toString();
+                        if (val && val[0]) setPodcastLength(val[0]);
                       }}
                       className="w-3/4"
                     />
+                    {jobStatus && (
+                      <div className="mt-2 text-sm font-medium">
+                        Status: {jobStatus}
+                      </div>
+                    )}
+                    {audioUrl && (
+                      <div className="mt-4 flex flex-col items-center gap-2">
+                        <audio controls src={audioUrl}></audio>
+                        <a href={audioUrl} download>
+                          <Button>Download Podcast</Button>
+                        </a>
+                      </div>
+                    )}
                   </div>
                   <DialogFooter>
-                    <Button type="submit">Confirm</Button>
+                    <Button type="button" onClick={handleGeneratePodcast} disabled={isPodcastLoading}>
+                      {isPodcastLoading ? "Generating..." : "Confirm"}
+                    </Button>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>

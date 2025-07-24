@@ -27,3 +27,32 @@ export async function getLocationMood(location: string, datetimeStr?: string): P
     throw error;
   }
 }
+
+export async function generatePodcast(city: string, duration: number, voice: string = "en-US-Studio-Q", speakingRate: number = 1.0) {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/podcast/generate`, {
+      city,
+      duration_minutes: duration,
+      voice,
+      speaking_rate: speakingRate
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error generating podcast:', error);
+    throw error;
+  }
+}
+
+export async function getPodcastJobStatus(jobId: string) {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/jobs/${jobId}`);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error fetching podcast job status:', error);
+    throw error;
+  }
+}
+
+export function getPodcastAudioUrl(filename: string) {
+  return `${API_BASE_URL}/files/${filename}`;
+}

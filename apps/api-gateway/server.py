@@ -6,6 +6,7 @@ import httpx
 import os
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
 
 ORCHESTRATOR_URL = os.getenv("ORCHESTRATOR_URL", "http://localhost:8000")
 
@@ -43,6 +44,35 @@ async def proxy_location_mood(request: Request):
     async with httpx.AsyncClient(timeout=HTTPX_TIMEOUT) as client:
         response = await client.post(f"{ORCHESTRATOR_URL}/location_mood", params=params)
     return response.json()
+
+NEWS_AGENT_URL = "http://localhost:8081"
+
+class PodcastRequest(BaseModel):
+    city: str
+    duration_minutes: int
+    voice: str = "en-US-Studio-Q"
+    speaking_rate: float = 1.0
+
+@app.post("/api/v1/podcast/generate")
+async def generate_podcast(request: PodcastRequest):
+    async with httpx.AsyncClient(timeout=HTTPX_TIMEOUT) as client:
+        response = await client.post(
+            f"{NEWS_AGENT_URL}/api/v1/podcast/generate",
+            json=request.dict()
+        )
+        return response.json()
+
+@app.get("/api/v1/jobs/{job_id}")
+async def get_podcast_job_status(job_id: str):
+    async with httpx.AsyncClient(timeout=HTTPX_TIMEOUT) as client:
+        response = await client.get(f"{NEWS_AGENT_URL}/api/v1/jobs/{job_id}")
+    return response.json()
+
+@app.get("/api/v1/files/{filename}")
+async def get_podcast_file(filename: str):
+    async with httpx.AsyncClient(timeout=HTTPX_TIMEOUT) as client:
+        response = await client.get(f"{NEWS_AGENT_URL}/api/v1/files/{filename}")
+    return Response(content=response.content, media_type="audio/mpeg")
 
 if __name__ == "__main__":
     uvicorn.run("server:app", host="0.0.0.0", port=5000, reload=True)
