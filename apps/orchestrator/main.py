@@ -53,69 +53,39 @@ async def chat_router(query: UserQuery):
     entities = intent_data["entities"]
     location = entities.get("location", "")
     topic = entities.get("topic", "")
+    reply = ""
     # 2. Direct tool calls for each intent
     if intent == "get_twitter_posts" and location and topic:
         log_event("Orchestrator", f"Calling fetch_twitter_posts directly with location: {location!r}, topic: {topic!r}")
         reply = fetch_twitter_posts(location=location, topic=topic, limit=5)
         log_event("Orchestrator", f"fetch_twitter_posts reply: {reply!r}")
-        if not reply.strip():
-            log_event("Orchestrator", "No reply from Twitter tool, falling back to Gemini LLM.")
-            reply = await run_gemini_fallback_agent(query.message, user_id=query.user_id)
-        return BotResponse(intent=intent, entities=entities, reply=reply)
     elif intent == "get_reddit_posts" and "subreddit" in entities:
         log_event("Orchestrator", f"Calling fetch_reddit_posts directly with subreddit: {entities.get('subreddit')!r}, topic: {entities.get('topic')!r}")
         reply = await fetch_reddit_posts(subreddit=entities["subreddit"], limit=5)
         log_event("Orchestrator", f"fetch_reddit_posts reply: {reply!r}")
-        if not reply.strip():
-            log_event("Orchestrator", "No reply from Reddit tool, falling back to Gemini LLM.")
-            reply = await run_gemini_fallback_agent(query.message, user_id=query.user_id)
-        return BotResponse(intent=intent, entities=entities, reply=reply)
     elif intent == "social_media" and entities.get("source", "").lower() == "reddit" and "topic" in entities:
         log_event("Orchestrator", f"Calling fetch_reddit_posts (social_media intent) with subreddit: {entities.get('topic')!r}")
         reply = await fetch_reddit_posts(subreddit=entities["topic"].replace(' ', ''), limit=5)
         log_event("Orchestrator", f"fetch_reddit_posts (social_media intent) reply: {reply!r}")
-        if not reply.strip():
-            log_event("Orchestrator", "No reply from Reddit tool (social_media intent), falling back to Gemini LLM.")
-            reply = await run_gemini_fallback_agent(query.message, user_id=query.user_id)
-        return BotResponse(intent=intent, entities=entities, reply=reply)
-    # --- FLEXIBLE ROUTING: News queries ---
     elif intent == "get_city_news" and ("city" in entities or location):
         city = entities.get("city", location)
-        # ... (rest of your news logic) ...
         reply = "[News tool call here]"
-        return BotResponse(intent=intent, entities=entities, reply=reply)
-    # --- FLEXIBLE ROUTING: Firestore Reports queries ---
     elif intent == "get_firestore_reports" and location and topic:
-        # ... (rest of your firestore reports logic) ...
         reply = "[Firestore reports tool call here]"
-        return BotResponse(intent=intent, entities=entities, reply=reply)
-    # --- FLEXIBLE ROUTING: Firestore Similar queries ---
     elif intent == "get_similar_queries" and "user_id" in entities and "query" in entities:
-        # ... (rest of your firestore similar logic) ...
         reply = "[Firestore similar tool call here]"
-        return BotResponse(intent=intent, entities=entities, reply=reply)
-    # --- FLEXIBLE ROUTING: Google Search queries ---
     elif intent == "google_search" and "query" in entities:
-        # ... (rest of your google search logic) ...
         reply = "[Google search tool call here]"
-        return BotResponse(intent=intent, entities=entities, reply=reply)
-    # --- FLEXIBLE ROUTING: Maps/Route queries ---
     elif intent == "get_best_route" and "current_location" in entities and "destination" in entities:
-        # ... (rest of your maps/route logic) ...
         reply = "[Maps tool call here]"
-        return BotResponse(intent=intent, entities=entities, reply=reply)
     elif intent in ["get_must_visit_places", "poi"] and location:
         reply = get_must_visit_places_nearby(location, max_results=10)
-        if not reply.strip():
-            log_event("Orchestrator", "No reply from Places tool, falling back to Gemini LLM.")
-            reply = await run_gemini_fallback_agent(query.message, user_id=query.user_id)
-        return BotResponse(intent=intent, entities=entities, reply=reply)
-    # Fallback: use Gemini LLM or router
-    tool_name = None
-    args = {"query": query.message}
-    log_event("Orchestrator", f"Intent: {intent}, Entities: {entities}, Tool: {tool_name}, Args: {args}")
-    reply = await agent_router(tool_name, args, fallback="gemini")
-    log_event("Orchestrator", f"Agent reply: {reply!r}")
+    else:
+        tool_name = None
+        args = {"query": query.message}
+        log_event("Orchestrator", f"Intent: {intent}, Entities: {entities}, Tool: {tool_name}, Args: {args}")
+        reply = await agent_router(tool_name, args, fallback="gemini")
+        log_event("Orchestrator", f"Agent reply: {reply!r}")
 
     # GENERAL GEMINI FALLBACK
     if (
