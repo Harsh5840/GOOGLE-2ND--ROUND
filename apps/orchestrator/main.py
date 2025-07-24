@@ -33,6 +33,8 @@ from agents.firestore_reports_agent import run_firestore_reports_agent
 from agents.firestore_similar_agent import run_firestore_similar_agent
 from agents.google_search_agent import run_google_search_agent
 from tools.reddit import fetch_reddit_posts
+from agents.social_agent import run_social_agent
+from tools.twitter import fetch_twitter_posts
 
 # Initialize Google Cloud Vertex AI
 aiplatform.init(project=os.getenv("GCP_PROJECT_ID"), location=os.getenv("GCP_REGION"))
@@ -78,17 +80,6 @@ async def chat_router(query: UserQuery):
         reply = await run_twitter_agent(location=location, topic="sentiment", limit=5, user_id=query.user_id)
         log_event("Orchestrator", f"run_twitter_agent (sentiment intent) reply: {reply!r}")
         return BotResponse(intent=intent, entities=entities, reply=reply)
-    # --- FLEXIBLE ROUTING: Reddit social_media queries ---
-    elif intent == "get_reddit_posts" and "subreddit" in entities:
-        log_event("Orchestrator", f"Calling fetch_reddit_posts directly with subreddit: {entities.get('subreddit')!r}, topic: {entities.get('topic')!r}")
-        reply = await fetch_reddit_posts(subreddit=entities["subreddit"], limit=5)
-        log_event("Orchestrator", f"fetch_reddit_posts reply: {reply!r}")
-        return BotResponse(intent=intent, entities=entities, reply=reply)
-    elif intent == "social_media" and entities.get("source", "").lower() == "reddit" and "topic" in entities:
-        log_event("Orchestrator", f"Calling fetch_reddit_posts (social_media intent) with subreddit: {entities.get('topic')!r}")
-        reply = await fetch_reddit_posts(subreddit=entities["topic"].replace(' ', ''), limit=5)
-        log_event("Orchestrator", f"fetch_reddit_posts (social_media intent) reply: {reply!r}")
-        return BotResponse(intent=intent, entities=entities, reply=reply)
     # --- FLEXIBLE ROUTING: News queries ---
     elif intent == "get_city_news" and ("city" in entities or location):
         city = entities.get("city", location)
@@ -123,6 +114,22 @@ async def chat_router(query: UserQuery):
     elif intent in ["get_must_visit_places", "poi"] and location:
         reply = await run_places_agent(location, max_results=3, user_id=query.user_id)
         log_event("Orchestrator", f"run_places_agent reply: {reply!r}")
+        return BotResponse(intent=intent, entities=entities, reply=reply)
+    # --- FLEXIBLE ROUTING: Direct tool calls for Twitter/Reddit ---
+    if intent == "get_twitter_posts" and location and topic:
+        log_event("Orchestrator", f"Calling fetch_twitter_posts directly with location: {location!r}, topic: {topic!r}")
+        reply = fetch_twitter_posts(location=location, topic=topic, limit=5)
+        log_event("Orchestrator", f"fetch_twitter_posts reply: {reply!r}")
+        return BotResponse(intent=intent, entities=entities, reply=reply)
+    elif intent == "get_reddit_posts" and "subreddit" in entities:
+        log_event("Orchestrator", f"Calling fetch_reddit_posts directly with subreddit: {entities.get('subreddit')!r}, topic: {entities.get('topic')!r}")
+        reply = await fetch_reddit_posts(subreddit=entities["subreddit"], limit=5)
+        log_event("Orchestrator", f"fetch_reddit_posts reply: {reply!r}")
+        return BotResponse(intent=intent, entities=entities, reply=reply)
+    elif intent == "social_media" and entities.get("source", "").lower() == "reddit" and "topic" in entities:
+        log_event("Orchestrator", f"Calling fetch_reddit_posts (social_media intent) with subreddit: {entities.get('topic')!r}")
+        reply = await fetch_reddit_posts(subreddit=entities["topic"].replace(' ', ''), limit=5)
+        log_event("Orchestrator", f"fetch_reddit_posts (social_media intent) reply: {reply!r}")
         return BotResponse(intent=intent, entities=entities, reply=reply)
     # Fallback: use Gemini LLM or router
     tool_name = None
