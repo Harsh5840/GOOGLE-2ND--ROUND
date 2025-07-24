@@ -1,5 +1,3 @@
-# agents/rag_search.py
-
 from vertexai.generative_models import GenerativeModel
 from shared.utils.logger import log_event
 
@@ -10,7 +8,6 @@ def get_rag_fallback(location: str, topic: str) -> list:
     If no strong results from Reddit, Twitter or Firestore,
     fallback to a search-style Gemini query on background knowledge.
     """
-
     prompt = f"""
 You are a smart city assistant with access to background city data.
 Answer the following query or summarize if available data is minimal.
@@ -24,12 +21,10 @@ Example:
 - Metro delays expected in the area
 - Avoid stretch due to ongoing civic repair work
 """
-
     try:
         response = gemini.generate_content(prompt)
         bullets = [line.strip("- ").strip() for line in response.text.split("\n") if line.strip().startswith("-")]
         return bullets
-
     except Exception as e:
-        log_event("RAGSearch", f"Error: {e}")
-        return []
+        log_event("RAGTool", f"Error: {e}")
+        return [] 

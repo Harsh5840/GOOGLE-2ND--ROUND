@@ -24,5 +24,5 @@ def google_search(query: str, num_results: int = 5) -> list:
             })
         return results
     except Exception as e:
-        log_event("GoogleSearchAgent", f"Error: {e}")
-        return []
+        log_event("GoogleSearchTool", f"Error: {e}")
+        return [] 
