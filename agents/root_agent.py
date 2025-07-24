@@ -4,6 +4,7 @@ from agents.data_agent import create_data_agent, run_data_agent
 from agents.analysis_agent import create_analysis_agent, run_analysis_agent
 from agents.report_agent import create_report_agent, run_report_agent
 import uuid
+from agents.session_service import session_service, COMMON_APP_NAME
 
 # Root Agent definition (unchanged)
 def create_root_agent():
@@ -22,10 +23,10 @@ async def run_investigation(query: str, context: dict = None) -> dict:
     if 'user_id' not in context:
         context['user_id'] = 'testuser'
     # Create the session ONCE, before any agent runs
-    await research_session_service.create_session(
+    await session_service.create_session(
         session_id=context['session_id'],
         user_id=context['user_id'],
-        app_name="research_agent"
+        app_name=COMMON_APP_NAME
     )
     # Phase 1: Research
     research_results = await run_research_agent(query, context)

@@ -6,9 +6,7 @@ from google.genai import types
 import uuid
 from tools.firestore import fetch_firestore_reports, store_user_query_history, fetch_similar_user_queries
 from tools.rag import get_rag_fallback
-
-# Shared session service instance for all data agent runs
-session_service = InMemorySessionService()
+from agents.session_service import session_service, COMMON_APP_NAME
 
 def create_data_agent():
     tools = [
@@ -27,7 +25,7 @@ def create_data_agent():
 # Async ADK-based run function
 async def run_data_agent(query: str, context: dict = None) -> dict:
     agent = create_data_agent()
-    runner = Runner(agent=agent, app_name="data_agent", session_service=session_service)
+    runner = Runner(agent=agent, app_name=COMMON_APP_NAME, session_service=session_service)
     user_id = context.get("user_id", "testuser") if context else "testuser"
     session_id = context.get("session_id", str(uuid.uuid4())) if context else str(uuid.uuid4())
     content = types.Content(role="user", parts=[types.Part(text=query)])

@@ -1,11 +1,8 @@
 from google.adk.agents import Agent
 from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService
+from agents.session_service import session_service, COMMON_APP_NAME
 from google.genai import types
 import uuid
-
-# Shared session service instance for all report agent runs
-session_service = InMemorySessionService()
 
 def create_report_agent():
     # TODO: Add FunctionTools for report generation, validation, slides, etc.
@@ -19,7 +16,7 @@ def create_report_agent():
 # Async ADK-based run function
 async def run_report_agent(query: str, research_results: dict, data_results: dict, analysis_results: dict, context: dict = None) -> dict:
     agent = create_report_agent()
-    runner = Runner(agent=agent, app_name="report_agent", session_service=session_service)
+    runner = Runner(agent=agent, app_name=COMMON_APP_NAME, session_service=session_service)
     user_id = context.get("user_id", "testuser") if context else "testuser"
     session_id = context.get("session_id", str(uuid.uuid4())) if context else str(uuid.uuid4())
     prompt = f"Generate a final report for '{query}' using the following results:\nResearch: {research_results}\nData: {data_results}\nAnalysis: {analysis_results}"
