@@ -40,8 +40,15 @@ def get_best_route(current_location: str, destination: str, mode: str = "driving
         log_event("GoogleMapsAgent", "GOOGLE_MAPS_API_KEY not set.")
         return {"error": "Google Maps API key not configured."}
 
-    try:
+    # Input validation
+    if not current_location or not str(current_location).strip():
+        log_event("GoogleMapsAgent", "get_best_route called with empty current_location.")
+        return {"error": "Current location is required to find a route."}
+    if not destination or not str(destination).strip():
+        log_event("GoogleMapsAgent", "get_best_route called with empty destination.")
+        return {"error": "Destination is required to find a route."}
 
+    try:
         params = {
             "origin": current_location,
             "destination": destination,
@@ -54,25 +61,25 @@ def get_best_route(current_location: str, destination: str, mode: str = "driving
 
         directions_result = gmaps.directions(**params)
 
-        if not directions_result:
+        if not directions_result or not isinstance(directions_result, list) or not directions_result[0].get("legs"):
             return {"error": "No route found."}
         route = directions_result[0]
         leg = route["legs"][0]
         steps = [
             {
-                "instruction": step["html_instructions"],
-                "distance": step["distance"]["text"],
-                "duration": step["duration"]["text"],
+                "instruction": step.get("html_instructions", ""),
+                "distance": step.get("distance", {}).get("text", "N/A"),
+                "duration": step.get("duration", {}).get("text", "N/A"),
             }
-            for step in leg["steps"]
+            for step in leg.get("steps", [])
         ]
         return {
             "summary": route.get("summary", "N/A"),
-            "distance": leg["distance"]["text"],
-            "duration": leg["duration"]["text"],
+            "distance": leg.get("distance", {}).get("text", "N/A"),
+            "duration": leg.get("duration", {}).get("text", "N/A"),
             "duration_in_traffic": leg.get("duration_in_traffic", {}).get("text", "N/A"),
-            "start_address": leg["start_address"],
-            "end_address": leg["end_address"],
+            "start_address": leg.get("start_address", "N/A"),
+            "end_address": leg.get("end_address", "N/A"),
             "steps": steps,
         }
     except Exception as e:
