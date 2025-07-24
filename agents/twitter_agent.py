@@ -29,17 +29,32 @@ async def run_twitter_agent(location: str, topic: str, limit: int = 10, user_id:
         session_id = str(uuid.uuid4())
     await session_service.create_session(session_id=session_id, user_id=user_id, app_name=COMMON_APP_NAME)
     content = types.Content(role="user", parts=[types.Part(text=f"Get recent tweets for {location} about {topic} (limit {limit})")])
-    result = ""
-    function_result = None
+    result_parts = []
     async for event in runner.run_async(user_id=user_id, session_id=session_id, new_message=content):
-        if hasattr(event, 'text') and event.text:
-            result += event.text
-        if hasattr(event, 'parts') and event.parts:
+        if getattr(event, "text", None):
+            s = str(event.text).strip()
+            if s and s.lower() != 'none':
+                result_parts.append(s)
+        if getattr(event, "parts", None):
             for part in event.parts:
-                if hasattr(part, 'text') and part.text:
-                    result += part.text
-                if hasattr(part, 'function_response') and part.function_response:
-                    function_result = part.function_response.response.get('result')
-    if not result.strip() and function_result:
-        return function_result
-    return result.strip() 
+                part_text = getattr(part, "text", None)
+                if part_text:
+                    val = part_text() if callable(part_text) else part_text
+                    s = str(val).strip()
+                    if s and s.lower() != "none":
+                        result_parts.append(s)
+                func_resp = getattr(part, "function_response", None)
+                if func_resp and hasattr(func_resp, "response"):
+                    tool_resp = func_resp.response
+                    if isinstance(tool_resp, dict) and "result" in tool_resp:
+                        val = tool_resp["result"]
+                        s = str(val).strip()
+                        if s and s.lower() != "none":
+                            result_parts.append(s)
+                    elif isinstance(tool_resp, str):
+                        s = str(tool_resp).strip()
+                        if s and s.lower() != "none":
+                            result_parts.append(s)
+    final_result = "\n".join(result_parts).strip()
+    print("DEBUG: Final result:", repr(final_result))
+    return final_result 
