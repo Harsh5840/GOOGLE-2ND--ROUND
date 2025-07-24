@@ -12,14 +12,9 @@ from fastapi import Query
 from textblob import TextBlob
 from typing import Optional
 
-from agents.reddit_agent import fetch_reddit_posts
-from agents.twitter_agent import fetch_twitter_posts
-from agents.rag_search import get_rag_fallback
+from agents.city_adk_agent import run_city_agent
 from agents.response_agent import generate_final_response
 from agents.intent_extractor.agent import extract_intent
-from agents.news_agent import fetch_city_news
-from agents.googlemaps_agent import get_best_route, get_must_visit_places_nearby
-from agents.google_search_agent import google_search
 from agents.agglomerator import aggregate_api_results
 from shared.utils.mood import aggregate_mood
 
@@ -44,98 +39,8 @@ class BotResponse(BaseModel):
 
 
 def city_chatbot_orchestrator(message: str) -> str:
-    log_event("Orchestrator", "Running city_chatbot_orchestrator...")
-
-    # Step 1: Extract intent and entities
-    parsed = extract_intent(message)
-    intent = parsed["intent"]
-    entities = parsed["entities"]
-    location = entities.get("location", "")
-    topic = entities.get("topic", "")
-
-    log_event(
-        "Orchestrator", f"Intent: {intent} | Location: {location} | Topic: {topic}"
-    )
-
-    # Step 1.5: If intent is 'poi' (places of interest) and location is missing, prompt user
-    if intent == "poi" and not location.strip():
-        log_event("Orchestrator", "No location provided for POI intent. Prompting user.")
-        return "Please specify a location (city or area) to find the best places to visit."
-
-    # Step 2: Fetch external data sources based on intent
-    maps_data = {}
-    must_visit_places = []
-    if intent == "poi":
-        # Only call must_visit for POI intent
-        must_visit_places = get_must_visit_places_nearby(location, max_results=3) if location.strip() else []
-    elif intent == "route" and location.strip() and topic.strip():
-        # Only call best_route if both location and topic are present for route intent
-        maps_data = get_best_route(location, topic)
-    # For other intents, skip both Google Maps calls unless both params are present (optional)
-
-    if isinstance(maps_data, dict) and "error" in maps_data:
-        log_event("Orchestrator", f"Google Maps error: {maps_data['error']}")
-        maps_data = {}
-    if must_visit_places and not isinstance(must_visit_places, list):
-        log_event(
-            "Orchestrator",
-            f"get_must_visit_places_nearby returned non-list: {must_visit_places}",
-        )
-        must_visit_places = []
-
-    try:
-        news_data = fetch_city_news(location)
-        rag_data = get_rag_fallback(location, topic)
-        reddit_data = fetch_reddit_posts(location, topic)
-        twitter_data = fetch_twitter_posts(location, topic)
-    except Exception as e:
-        log_event("Orchestrator", f"Error fetching external data: {e}")
-        news_data = rag_data = reddit_data = twitter_data = []
-
-    log_event("Orchestrator", "Data from tools fetched successfully.")
-
-    # Step 3: Improved fallback to Google Search if all are empty or error
-    def is_empty_or_error(data):
-        if not data:
-            return True
-        if isinstance(data, dict) and "error" in data:
-            return True
-        if isinstance(data, dict) and not data:  # empty dict
-            return True
-        if isinstance(data, list) and not data:  # empty list
-            return True
-        return False
-
-    if all(is_empty_or_error(x) for x in [reddit_data, twitter_data, rag_data, news_data]):
-        google_results = google_search(message)
-        rag_data = [
-            f"{item['title']}: {item['snippet']} ({item['link']})"
-            for item in google_results
-        ]
-    else:
-        google_results = []
-
-    # Step 4: Aggregate all results
-    unified_data = aggregate_api_results(
-        reddit_data=reddit_data,
-        twitter_data=twitter_data,
-        news_data=news_data,
-        maps_data=maps_data,
-        rag_data=rag_data,
-        google_search_data=google_results,
-    )
-    unified_data["must_visit_places"] = must_visit_places
-
-    # Step 5: Fuse all info via Gemini response agent
-    final_response = generate_final_response(
-        user_message=message,
-        intent=intent,
-        location=location,
-        topic=topic,
-        unified_data=unified_data,
-    )
-
-    return final_response
+    # Use the new Google ADK agent for all queries
+    return run_city_agent(message)
 
 
 @app.post("/chat", response_model=BotResponse)
@@ -167,15 +72,15 @@ async def location_mood(
     Returns a mood label, score, detected events, must-visit places, and source breakdown for frontend use.
     """
     unified_data = aggregate_api_results(
-        reddit_data=fetch_reddit_posts(location, ""),
-        twitter_data=fetch_twitter_posts(location, ""),
-        news_data=fetch_city_news(location),
-        maps_data=get_best_route(location, location),
+        reddit_data=[],
+        twitter_data=[],
+        news_data=[],
+        maps_data=[],
         rag_data=[],
-        google_search_data=google_search(location),
+        google_search_data=[],
     )
     mood_result = aggregate_mood(unified_data)
-    must_visit_places = get_must_visit_places_nearby(location, max_results=3)
+    must_visit_places = []
     return {
         "location": location,
         "datetime": datetime_str,
