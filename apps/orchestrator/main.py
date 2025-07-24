@@ -94,14 +94,26 @@ def city_chatbot_orchestrator(message: str) -> str:
 
     log_event("Orchestrator", "Data from tools fetched successfully.")
 
-    # Step 3: Fallback to Google Search if all are empty
-    google_results = []
-    if not (reddit_data or twitter_data or rag_data or news_data):
+    # Step 3: Improved fallback to Google Search if all are empty or error
+    def is_empty_or_error(data):
+        if not data:
+            return True
+        if isinstance(data, dict) and "error" in data:
+            return True
+        if isinstance(data, dict) and not data:  # empty dict
+            return True
+        if isinstance(data, list) and not data:  # empty list
+            return True
+        return False
+
+    if all(is_empty_or_error(x) for x in [reddit_data, twitter_data, rag_data, news_data]):
         google_results = google_search(message)
         rag_data = [
             f"{item['title']}: {item['snippet']} ({item['link']})"
             for item in google_results
         ]
+    else:
+        google_results = []
 
     # Step 4: Aggregate all results
     unified_data = aggregate_api_results(
