@@ -1,4 +1,4 @@
-import asyncpraw
+import asyncpraw #TODO: Fix async issue
 import os
 from shared.utils.logger import log_event
 
