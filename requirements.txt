@@ -1,0 +1,27 @@
+# News Podcast Agent - Production Dependencies
+# Essential packages for FastAPI endpoints and local CLI testing
+
+# Google Cloud and AI Platform
+google-adk~=1.6.0
+opentelemetry-exporter-gcp-trace~=1.9.0
+google-cloud-logging~=3.11.4
+google-cloud-aiplatform[evaluation,agent-engines]~=1.103.0
+
+# Environment and configuration
+python-dotenv~=1.0.0
+
+# FastAPI web framework
+fastapi~=0.104.0
+uvicorn[standard]~=0.24.0
+pydantic~=2.5.0
+python-multipart~=0.0.6
+
+# News API client
+newsapi-python~=0.2.6
+
+
+google-cloud-texttospeech
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+vertexai
