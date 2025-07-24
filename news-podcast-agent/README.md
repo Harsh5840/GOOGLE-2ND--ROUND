@@ -134,12 +134,28 @@ The News Podcast Agent creates personalized local news podcasts for any city. He
    - **Get News**: `GET /api/v1/news/{city}`
    - **API Documentation**: `http://localhost:8000/docs`
 
-3. Example API request:
+3. Example API requests:
    ```bash
+   # Generate a podcast
    curl -X POST "http://localhost:8000/api/v1/podcast" \
         -H "Content-Type: application/json" \
         -d '{"city": "Bengaluru", "duration_minutes": 5}'
+   
+   # Check job status
+   curl "http://localhost:8000/api/v1/jobs/{job_id}"
+   
+   # Download audio file
+   curl "http://localhost:8000/api/v1/files/{filename}" -o podcast.mp3
+   
+   # Get local news
+   curl "http://localhost:8000/api/v1/news/Bengaluru"
    ```
+
+4. **API Integration Steps:**
+   - Set up environment variables (`.env` file)
+   - Install dependencies: `pip install -r requirements.txt`
+   - Start server: `uvicorn app.api_server:app --reload`
+   - Access interactive docs: `http://localhost:8000/docs`
 
 ### Using the Command Line
 
