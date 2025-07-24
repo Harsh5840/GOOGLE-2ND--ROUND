@@ -1,0 +1,28 @@
+from google.adk.agents import Agent
+from google.adk.tools import FunctionTool
+from google.adk.runners import Runner
+from google.genai import types
+import uuid
+from agents.session_service import session_service, COMMON_APP_NAME
+from tools.firestore import store_user_query_history
+
+def create_firestore_history_agent():
+    return Agent(
+        model="gemini-2.0-flash-001",
+        name="firestore_history_agent",
+        instruction="You are a Firestore History Agent. Use the store_user_query_history tool to store user queries and responses in Firestore.",
+        tools=[FunctionTool(store_user_query_history)]
+    )
+
+async def run_firestore_history_agent(user_id: str, query: str, response_data: dict, session_id: str = None) -> str:
+    agent = create_firestore_history_agent()
+    runner = Runner(agent=agent, app_name=COMMON_APP_NAME, session_service=session_service)
+    if not session_id:
+        session_id = str(uuid.uuid4())
+    await session_service.create_session(session_id=session_id, user_id=user_id, app_name=COMMON_APP_NAME)
+    content = types.Content(role="user", parts=[types.Part(text=f"Store user query '{query}' with response data in Firestore")])
+    result = ""
+    async for event in runner.run_async(user_id=user_id, session_id=session_id, new_message=content):
+        if hasattr(event, 'text') and event.text:
+            result += event.text
+    return result 
