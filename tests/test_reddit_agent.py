@@ -3,10 +3,10 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import unittest
 from unittest.mock import patch, MagicMock
-from agents.reddit_agent import fetch_reddit_posts, RedditAgent
+from tools.reddit import fetch_reddit_posts
 
-class TestRedditAgent(unittest.TestCase):
-    @patch('agents.reddit_agent.praw.Reddit')
+class TestRedditTool(unittest.TestCase):
+    @patch('tools.reddit.praw.Reddit')
     def test_fetch_reddit_posts_success(self, mock_reddit):
         mock_instance = MagicMock()
         mock_reddit.return_value = mock_instance
@@ -18,13 +18,13 @@ class TestRedditAgent(unittest.TestCase):
         self.assertIn('posts', result)
         self.assertEqual(result['posts'][0]['title'], 'post1')
 
-    @patch('agents.reddit_agent.praw.Reddit')
+    @patch('tools.reddit.praw.Reddit')
     def test_fetch_reddit_posts_no_creds(self, mock_reddit):
-        with patch('agents.reddit_agent.REDDIT_CLIENT_ID', None):
+        with patch('tools.reddit.REDDIT_CLIENT_ID', None):
             result = fetch_reddit_posts('news', 1)
             self.assertIn('error', result)
 
-    @patch('agents.reddit_agent.praw.Reddit')
+    @patch('tools.reddit.praw.Reddit')
     def test_fetch_reddit_posts_api_error(self, mock_reddit):
         mock_reddit.side_effect = Exception('fail')
         result = fetch_reddit_posts('news', 1)

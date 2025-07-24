@@ -12,7 +12,7 @@ CONSUMER_SECRET = os.getenv("TWITTER_CONSUMER_SECRET")
 ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
 ACCESS_TOKEN_SECRET = os.getenv("TWITTER_ACCESS_TOKEN_SECRET")
 
-def fetch_twitter_posts(location: str, topic: str, limit: int = 10) -> Dict[str, Any]:
+def fetch_twitter_posts(location: str, topic: str, limit: int = 10) -> str:
     """
     Uses Twitter API v2 via Tweepy to search recent tweets based on location + topic.
 
@@ -39,7 +39,7 @@ def fetch_twitter_posts(location: str, topic: str, limit: int = 10) -> Dict[str,
         missing.append("TWITTER_ACCESS_TOKEN_SECRET")
     if missing:
         log_event("TwitterTool", f"Error: Missing Twitter credentials: {', '.join(missing)}")
-        return {"error": f"Twitter API credentials missing: {', '.join(missing)}"}
+        return f"Twitter API credentials missing: {', '.join(missing)}"
 
     client = tweepy.Client(BEARER_TOKEN)
 
@@ -70,21 +70,11 @@ def fetch_twitter_posts(location: str, topic: str, limit: int = 10) -> Dict[str,
 
             for tweet in tweets_data:
                 processed_tweets.append(
-                    {
-                        "text": tweet.text,
-                        "id": tweet.id,
-                        "created_at": str(
-                            tweet.created_at
-                            ),  # WARNING: Convert datetime object to string
-                        "author_id": tweet.author_id,
-                        "author_username": users_by_id.get(
-                            tweet.author_id, "N/A"
-                        ),  # Get username
-                    }
+                    f"@{users_by_id.get(tweet.author_id, 'N/A')}: {tweet.text} (at {tweet.created_at})"
                 )
-        return {
-            "tweets": processed_tweets
-        }
+        if not processed_tweets:
+            return f"No recent tweets found for {location} about {topic}."
+        return "Recent tweets: " + " | ".join(processed_tweets)
 
     except tweepy.TweepyException as e:
         if '429' in str(e) or 'Too Many Requests' in str(e):
@@ -92,8 +82,8 @@ def fetch_twitter_posts(location: str, topic: str, limit: int = 10) -> Dict[str,
         else:
             error_msg = f"Tweepy API Error: {e}"
         log_event("TwitterTool", error_msg)
-        return {"error": error_msg}
+        return error_msg
     except Exception as e:
         error_msg = f"An unexpected error occurred: {e}"
         log_event("TwitterTool", error_msg)
-        return {"error": error_msg} 
+        return error_msg 

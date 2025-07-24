@@ -3,7 +3,7 @@ from shared.utils.logger import log_event
 
 gemini = GenerativeModel("gemini-2.0-flash")
 
-def get_rag_fallback(location: str, topic: str) -> list:
+def get_rag_fallback(location: str, topic: str) -> str:
     """
     If no strong results from Reddit, Twitter or Firestore,
     fallback to a search-style Gemini query on background knowledge.
@@ -24,7 +24,9 @@ Example:
     try:
         response = gemini.generate_content(prompt)
         bullets = [line.strip("- ").strip() for line in response.text.split("\n") if line.strip().startswith("-")]
-        return bullets
+        if not bullets:
+            return f"No insights found for {location} on {topic}."
+        return f"Insights for {location} on {topic}: " + " | ".join(bullets)
     except Exception as e:
         log_event("RAGTool", f"Error: {e}")
-        return [] 
+        return f"Error in RAG fallback: {e}" 

@@ -10,7 +10,7 @@ db = firestore.Client()
 COLLECTION_NAME = os.getenv("FIREBASE_COLLECTION_NAME", "city_reports")
 USER_HISTORY_COLLECTION = "user_query_history"
 
-def fetch_firestore_reports(location: str, topic: str, limit: int = 5) -> list:
+def fetch_firestore_reports(location: str, topic: str, limit: int = 5) -> str:
     try:
         reports_ref = (
             db.collection(COLLECTION_NAME)
@@ -20,18 +20,18 @@ def fetch_firestore_reports(location: str, topic: str, limit: int = 5) -> list:
               .limit(limit)
         )
         docs = reports_ref.stream()
-        return [
-            {
-                "description": doc.to_dict().get("description"),
-                "timestamp": doc.to_dict().get("timestamp").isoformat()
-            }
+        results = [
+            f"{doc.to_dict().get('description')} (at {doc.to_dict().get('timestamp').isoformat()})"
             for doc in docs
         ]
+        if not results:
+            return f"No reports found for {location} on {topic}."
+        return f"Reports for {location} on {topic}: " + " | ".join(results)
     except Exception as e:
         log_event("FirestoreTool", f"Error fetching reports for {location}/{topic}: {e}")
-        return []
+        return f"Error fetching reports: {e}"
 
-def store_user_query_history(user_id: str, query: str, response_data: dict) -> bool:
+def store_user_query_history(user_id: str, query: str, response_data: dict) -> str:
     try:
         doc = {
             "user_id": user_id,
@@ -40,22 +40,24 @@ def store_user_query_history(user_id: str, query: str, response_data: dict) -> b
             "response_data": response_data
         }
         db.collection(USER_HISTORY_COLLECTION).add(doc)
-        return True
+        return "Success"
     except Exception as e:
         log_event("FirestoreTool", f"Error storing user query history: {e}")
-        return False
+        return f"Error storing user query history: {e}"
 
-def fetch_similar_user_queries(user_id: str, query: str, limit: int = 5) -> list:
+def fetch_similar_user_queries(user_id: str, query: str, limit: int = 5) -> str:
     try:
         docs = db.collection(USER_HISTORY_COLLECTION).where("user_id", "==", user_id).stream()
         similar = []
         for doc in docs:
             d = doc.to_dict()
             if query.lower() in d.get("query", "").lower():
-                similar.append(d)
+                similar.append(f"{d.get('query')} (at {d.get('timestamp')})")
             if len(similar) >= limit:
                 break
-        return similar
+        if not similar:
+            return f"No similar queries found for user {user_id}."
+        return f"Similar queries for user {user_id}: " + " | ".join(similar)
     except Exception as e:
         log_event("FirestoreTool", f"Error fetching similar user queries: {e}")
-        return [] 
+        return f"Error fetching similar user queries: {e}" 
