@@ -3,10 +3,10 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import unittest
 from unittest.mock import patch, MagicMock
-from agents.google_search_agent import google_search
+from tools.google_search import google_search
 
-class TestGoogleSearchAgent(unittest.TestCase):
-    @patch('agents.google_search_agent.requests.get')
+class TestGoogleSearchTool(unittest.TestCase):
+    @patch('tools.google_search.requests.get')
     def test_google_search_success(self, mock_get):
         mock_resp = MagicMock()
         mock_resp.json.return_value = {
@@ -16,19 +16,20 @@ class TestGoogleSearchAgent(unittest.TestCase):
         }
         mock_get.return_value = mock_resp
         result = google_search('test')
-        self.assertEqual(result[0]['title'], 't1')
+        self.assertIn('results', result)
+        self.assertEqual(result['results'][0]['title'], 't1')
 
-    @patch('agents.google_search_agent.requests.get')
+    @patch('tools.google_search.requests.get')
     def test_google_search_no_creds(self, mock_get):
-        with patch('agents.google_search_agent.GOOGLE_SEARCH_API_KEY', None):
+        with patch('tools.google_search.GOOGLE_SEARCH_API_KEY', None):
             result = google_search('test')
-            self.assertEqual(result, [])
+            self.assertEqual(result, {'results': []})
 
-    @patch('agents.google_search_agent.requests.get')
+    @patch('tools.google_search.requests.get')
     def test_google_search_api_error(self, mock_get):
         mock_get.side_effect = Exception('fail')
         result = google_search('test')
-        self.assertEqual(result, [])
+        self.assertEqual(result, {'results': []})
 
 if __name__ == '__main__':
     unittest.main() 
