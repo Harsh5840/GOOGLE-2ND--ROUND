@@ -27,4 +27,13 @@ async def fetch_reddit_posts(subreddit: str, limit: int = 5) -> str:
         return f"Error fetching Reddit posts: {e}"
     if not posts:
         return f"No posts found for r/{subreddit}."
-    return f"Top posts in r/{subreddit}:\n" + "\n".join(posts) 
+    return f"Top posts in r/{subreddit}:\n" + "\n".join(posts)
+
+if __name__ == "__main__":
+    import asyncio
+    print("Testing fetch_reddit_posts('bengaluru'):")
+    print(asyncio.run(fetch_reddit_posts("bengaluru")))
+    print("Testing fetch_reddit_posts('bangalore'):")
+    print(asyncio.run(fetch_reddit_posts("bangalore")))
+    print("Testing fetch_reddit_posts('Bengaluru City'):")
+    print(asyncio.run(fetch_reddit_posts("Bengaluru City"))) 

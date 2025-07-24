@@ -28,7 +28,7 @@ def create_reddit_agent():
     return Agent(
         model="gemini-2.0-flash-001",
         name="reddit_agent",
-        instruction="You are a Reddit Agent. Use the fetch_reddit_posts tool to answer questions about top posts in a subreddit.",
+        instruction="You are a Reddit Agent. Always use the fetch_reddit_posts tool to answer questions about Reddit posts. Do not answer directly.",
         tools=[FunctionTool(fetch_reddit_posts_sync)]
     )
 
