@@ -36,6 +36,8 @@ async def run_firestore_reports_agent(location: str, topic: str, limit: int = 5,
             result += event.text
         if hasattr(event, 'parts') and event.parts:
             for part in event.parts:
+                if hasattr(part, 'text') and part.text:
+                    result += part.text
                 if hasattr(part, 'function_response') and part.function_response:
                     function_result = part.function_response.response.get('result')
     if not result.strip() and function_result:

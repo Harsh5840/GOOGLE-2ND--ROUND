@@ -23,6 +23,7 @@ from agents.intent_extractor.agent import extract_intent
 from agents.agglomerator import aggregate_api_results
 from shared.utils.mood import aggregate_mood
 from agents.agent_router import agent_router
+from agents.places_agent import run_places_agent
 
 # Initialize Google Cloud Vertex AI
 aiplatform.init(project=os.getenv("GCP_PROJECT_ID"), location=os.getenv("GCP_REGION"))
@@ -71,8 +72,11 @@ async def chat_router(query: UserQuery):
         tool_name = "get_best_route"
         args = {"current_location": entities["current_location"], "destination": entities["destination"], "mode": entities.get("mode", "driving")}
     elif intent in ["get_must_visit_places", "poi"] and location:
-        tool_name = "get_must_visit_places_nearby"
-        args = {"location": location, "max_results": 3}
+        # --- DIRECTLY CALL run_places_agent for must-visit places ---
+        log_event("Orchestrator", f"Calling run_places_agent for location={location}, max_results=3")
+        reply = await run_places_agent(location, max_results=3, user_id=query.user_id)
+        log_event("Orchestrator", f"run_places_agent reply: {reply!r}")
+        return BotResponse(intent=intent, entities=entities, reply=reply)
     elif intent == "get_city_news" and location:
         tool_name = "fetch_city_news"
         args = {"city": location, "limit": 5}
@@ -92,6 +96,7 @@ async def chat_router(query: UserQuery):
     log_event("Orchestrator", f"Intent: {intent}, Entities: {entities}, Tool: {tool_name}, Args: {args}")
     # 3. Call agent_router
     reply = await agent_router(tool_name, args, fallback="gemini")
+    log_event("Orchestrator", f"Agent reply: {reply!r}")
     return BotResponse(intent=intent, entities=entities, reply=reply)
 
 

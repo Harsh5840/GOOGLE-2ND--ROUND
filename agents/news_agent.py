@@ -36,6 +36,8 @@ async def run_news_agent(city: str, limit: int = 5, user_id: str = "testuser", s
             result += event.text
         if hasattr(event, 'parts') and event.parts:
             for part in event.parts:
+                if hasattr(part, 'text') and part.text:
+                    result += part.text
                 if hasattr(part, 'function_response') and part.function_response:
                     function_result = part.function_response.response.get('result')
     if not result.strip() and function_result:

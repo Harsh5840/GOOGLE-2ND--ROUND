@@ -34,6 +34,8 @@ async def run_gemini_fallback_agent(query: str, user_id: str = "testuser", sessi
             result += event.text
         if hasattr(event, 'parts') and event.parts:
             for part in event.parts:
+                if hasattr(part, 'text') and part.text:
+                    result += part.text
                 if hasattr(part, 'function_response') and part.function_response:
                     function_result = part.function_response.response.get('result')
     if not result.strip() and function_result:

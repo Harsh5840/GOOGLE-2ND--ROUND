@@ -9,12 +9,11 @@ GOOGLE_SEARCH_ENGINE_ID = os.getenv("GOOGLE_SEARCH_ENGINE_ID")
 
 def google_search(query: str, num_results: int = 5) -> list:
     url = (
-        f"https://www.googleapis.com/customsearch/v1?key={GOOGLE_SEARCH_API_KEY}&cx={GOOGLE_SEARCH_ENGINE_ID}"
+        f"https://www.googleapis.com/customsearch/v1"
         f"&q={requests.utils.quote(query)}&num={num_results}"
     )
     try:
         resp = requests.get(url, timeout=5)
-        print("GoogleSearchTool raw response:", resp.text)  # Debug log
         data = resp.json()
         results = []
         for item in data.get("items", []):
