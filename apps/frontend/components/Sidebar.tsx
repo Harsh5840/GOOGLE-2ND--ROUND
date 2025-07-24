@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button"
 import { TrendingUp, Filter, Search, Podcast } from "lucide-react"
 import EventFeed from "./EventFeed"
 import Link from "next/link"
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { Slider } from "@/components/ui/slider"
 
 interface SidebarProps {
   isMobile: boolean
@@ -58,21 +60,47 @@ const Sidebar: React.FC<SidebarProps> = ({
           <div className={`p-4 md:p-6 lg:p-8 ${isMobile ? "pb-8" : ""}`}>
             {/* Podcast Button */}
             <div className="mb-6 flex justify-start">
-              <Link href="/podcasts" passHref legacyBehavior>
-                <Button
-                  asChild
-                  className={`gap-2 px-4 py-2 rounded-xl font-bold text-base shadow-lg transition-all duration-300 hover:scale-105 ${
-                    isDarkMode
-                      ? "bg-blue-700/90 text-white hover:bg-blue-800/90"
-                      : "bg-blue-600/90 text-white hover:bg-blue-700/90"
-                  }`}
-                >
-                  <span className="flex items-center">
-                    <Podcast className="w-5 h-5 mr-2" />
-                    Podcasts
-                  </span>
-                </Button>
-              </Link>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button
+                    className={`gap-2 px-4 py-2 rounded-xl font-bold text-base shadow-lg transition-all duration-300 hover:scale-105 ${
+                      isDarkMode
+                        ? "bg-blue-700/90 text-white hover:bg-blue-800/90"
+                        : "bg-blue-600/90 text-white hover:bg-blue-700/90"
+                    }`}
+                  >
+                    <span className="flex items-center">
+                      <Podcast className="w-5 h-5 mr-2" />
+                      Podcasts
+                    </span>
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Choose Podcast Length</DialogTitle>
+                    <DialogDescription>
+                      Select the length (in minutes) for your podcast. Default is 2 minutes.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="flex flex-col items-center gap-4 mt-4">
+                    <span className="font-medium">Length: <span id="podcast-length-value">2</span> min</span>
+                    <Slider
+                      min={1}
+                      max={10}
+                      step={1}
+                      defaultValue={[2]}
+                      onValueChange={val => {
+                        const el = document.getElementById('podcast-length-value');
+                        if (el && val && val[0]) el.textContent = val[0].toString();
+                      }}
+                      className="w-3/4"
+                    />
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit">Confirm</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
             {/* Enhanced Search */}
             <div className="relative mb-6 md:mb-8 group">
