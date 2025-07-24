@@ -24,6 +24,13 @@ from agents.agglomerator import aggregate_api_results
 from shared.utils.mood import aggregate_mood
 from agents.agent_router import agent_router
 from agents.places_agent import run_places_agent
+from agents.twitter_agent import run_twitter_agent
+from agents.reddit_agent import run_reddit_agent
+from agents.maps_agent import run_maps_agent
+from agents.news_agent import run_news_agent
+from agents.firestore_reports_agent import run_firestore_reports_agent
+from agents.firestore_similar_agent import run_firestore_similar_agent
+from agents.google_search_agent import run_google_search_agent
 
 # Initialize Google Cloud Vertex AI
 aiplatform.init(project=os.getenv("GCP_PROJECT_ID"), location=os.getenv("GCP_REGION"))
@@ -59,42 +66,48 @@ async def chat_router(query: UserQuery):
     entities = intent_data["entities"]
     location = entities.get("location", "")
     topic = entities.get("topic", "")
-    # 2. Decide tool and args based on intent/entities (simple mapping, can be improved)
-    tool_name = None
-    args = {}
+    # 2. Direct agent calls for each intent
     if intent == "get_twitter_posts" and location and topic:
-        tool_name = "fetch_twitter_posts"
-        args = {"location": location, "topic": topic, "limit": 5}
+        reply = await run_twitter_agent(location=location, topic=topic, limit=5, user_id=query.user_id)
+        log_event("Orchestrator", f"run_twitter_agent reply: {reply!r}")
+        return BotResponse(intent=intent, entities=entities, reply=reply)
     elif intent == "get_reddit_posts" and "subreddit" in entities:
-        tool_name = "fetch_reddit_posts"
-        args = {"subreddit": entities["subreddit"], "limit": 5}
+        reply = await run_reddit_agent(subreddit=entities["subreddit"], limit=5, user_id=query.user_id)
+        log_event("Orchestrator", f"run_reddit_agent reply: {reply!r}")
+        return BotResponse(intent=intent, entities=entities, reply=reply)
     elif intent == "get_best_route" and "current_location" in entities and "destination" in entities:
-        tool_name = "get_best_route"
-        args = {"current_location": entities["current_location"], "destination": entities["destination"], "mode": entities.get("mode", "driving")}
+        reply = await run_maps_agent(
+            current_location=entities["current_location"],
+            destination=entities["destination"],
+            mode=entities.get("mode", "driving"),
+            user_id=query.user_id
+        )
+        log_event("Orchestrator", f"run_maps_agent reply: {reply!r}")
+        return BotResponse(intent=intent, entities=entities, reply=reply)
     elif intent in ["get_must_visit_places", "poi"] and location:
-        # --- DIRECTLY CALL run_places_agent for must-visit places ---
-        log_event("Orchestrator", f"Calling run_places_agent for location={location}, max_results=3")
         reply = await run_places_agent(location, max_results=3, user_id=query.user_id)
         log_event("Orchestrator", f"run_places_agent reply: {reply!r}")
         return BotResponse(intent=intent, entities=entities, reply=reply)
     elif intent == "get_city_news" and location:
-        tool_name = "fetch_city_news"
-        args = {"city": location, "limit": 5}
+        reply = await run_news_agent(city=location, limit=5, user_id=query.user_id)
+        log_event("Orchestrator", f"run_news_agent reply: {reply!r}")
+        return BotResponse(intent=intent, entities=entities, reply=reply)
     elif intent == "get_firestore_reports" and location and topic:
-        tool_name = "fetch_firestore_reports"
-        args = {"location": location, "topic": topic, "limit": 5}
+        reply = await run_firestore_reports_agent(location=location, topic=topic, limit=5, user_id=query.user_id)
+        log_event("Orchestrator", f"run_firestore_reports_agent reply: {reply!r}")
+        return BotResponse(intent=intent, entities=entities, reply=reply)
     elif intent == "get_similar_queries" and "user_id" in entities and "query" in entities:
-        tool_name = "fetch_similar_user_queries"
-        args = {"user_id": entities["user_id"], "query": entities["query"], "limit": 5}
+        reply = await run_firestore_similar_agent(user_id=entities["user_id"], query=entities["query"], limit=5)
+        log_event("Orchestrator", f"run_firestore_similar_agent reply: {reply!r}")
+        return BotResponse(intent=intent, entities=entities, reply=reply)
     elif intent == "google_search" and "query" in entities:
-        tool_name = "google_search"
-        args = {"query": entities["query"], "num_results": 5}
-    else:
-        # Fallback: use Gemini LLM
-        tool_name = None
-        args = {"query": query.message}
+        reply = await run_google_search_agent(query=entities["query"], num_results=5, user_id=query.user_id)
+        log_event("Orchestrator", f"run_google_search_agent reply: {reply!r}")
+        return BotResponse(intent=intent, entities=entities, reply=reply)
+    # Fallback: use Gemini LLM or router
+    tool_name = None
+    args = {"query": query.message}
     log_event("Orchestrator", f"Intent: {intent}, Entities: {entities}, Tool: {tool_name}, Args: {args}")
-    # 3. Call agent_router
     reply = await agent_router(tool_name, args, fallback="gemini")
     log_event("Orchestrator", f"Agent reply: {reply!r}")
     return BotResponse(intent=intent, entities=entities, reply=reply)
