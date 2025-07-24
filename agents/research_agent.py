@@ -1,5 +1,7 @@
 from google.adk.agents import Agent
 from google.adk.tools import FunctionTool
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
 from tools.twitter import fetch_twitter_posts
 from tools.reddit import fetch_reddit_posts
 from tools.news import fetch_city_news
@@ -19,19 +21,11 @@ def create_research_agent():
         tools=tools
     )
 
-# Real run function for research agent
+# Dynamic ADK-based run function
 def run_research_agent(query: str, context: dict = None) -> dict:
-    """
-    Calls each research tool with the query/context and returns a dict of results.
-    """
-    context = context or {}
-    results = {}
-    # Twitter
-    results['twitter'] = fetch_twitter_posts(location=context.get('location', ''), topic=query)
-    # Reddit (using topic as subreddit for demo)
-    results['reddit'] = fetch_reddit_posts(subreddit=query)
-    # News
-    results['news'] = fetch_city_news(city=context.get('location', query))
-    # Google Search
-    results['google_search'] = google_search(query)
-    return results 
+    agent = create_research_agent()
+    session_service = InMemorySessionService()
+    runner = Runner(agent=agent, app_name="research_agent", session_service=session_service)
+    # Optionally, context can be appended to the query or handled via session state
+    response = runner.run(query)
+    return {"research_agent_response": response.text if hasattr(response, 'text') else str(response)} 

@@ -1,4 +1,6 @@
 from google.adk.agents import Agent
+from google.adk.runners import Runner
+from google.adk.sessions import InMemorySessionService
 
 def create_report_agent():
     # TODO: Add FunctionTools for report generation, validation, slides, etc.
@@ -9,13 +11,12 @@ def create_report_agent():
         tools=[]
     )
 
-# Real run function for report agent
+# Dynamic ADK-based run function
 def run_report_agent(query: str, research_results: dict, data_results: dict, analysis_results: dict) -> dict:
-    """
-    Generates a final report by combining all previous results.
-    """
-    report = f"Final Report for '{query}':\n"
-    report += f"- Research: {str(research_results)[:300]}...\n"
-    report += f"- Data: {str(data_results)[:300]}...\n"
-    report += f"- Analysis: {str(analysis_results)[:300]}...\n"
-    return {"final_report": report} 
+    agent = create_report_agent()
+    session_service = InMemorySessionService()
+    runner = Runner(agent=agent, app_name="report_agent", session_service=session_service)
+    # Synthesize a prompt for the agent
+    prompt = f"Generate a final report for '{query}' using the following results:\nResearch: {research_results}\nData: {data_results}\nAnalysis: {analysis_results}"
+    response = runner.run(prompt)
+    return {"final_report": response.text if hasattr(response, 'text') else str(response)} 
