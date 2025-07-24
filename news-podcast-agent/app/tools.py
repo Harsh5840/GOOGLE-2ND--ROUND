@@ -29,8 +29,8 @@ def fetch_local_news(city: str, max_articles: int = 5) -> List[Dict]:
 def synthesize_speech(
     text: str,
     output_path: str = "podcast_output.mp3",
-    voice: str = "en-US-Studio-O",  # Use expressive Studio voice by default
-    speaking_rate: float = 0.95  # Slightly slower for more natural delivery
+    voice: str = "en-US-Studio-Q",  # Gemini's best expressive Studio voice
+    speaking_rate: float = 1.0  # Natural speaking rate for Studio voices
 ) -> str:
     """Converts text to speech using Google Cloud TTS with enhanced naturalness and human-like qualities."""
     if texttospeech is None:
@@ -126,7 +126,7 @@ def local_news_tool(city: str, max_articles: int = 5) -> str:
 def text_to_speech_tool(
     text: str,
     output_path: str = "podcast_output.mp3",
-    voice: str = "en-US-Studio-O",  # Use expressive Studio voice by default
+    voice: str = "en-US-Studio-Q",  # Gemini's best expressive Studio voice
     speaking_rate: float = 1.0
 ) -> str:
     """Agent tool: converts text to speech and returns the audio file path."""

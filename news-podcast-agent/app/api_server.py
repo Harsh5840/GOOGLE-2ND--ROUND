@@ -43,8 +43,8 @@ job_status: Dict[str, Dict[str, Any]] = {}
 class PodcastRequest(BaseModel):
     city: str = Field(default=config.default_city, description="City name for local news")
     duration_minutes: int = Field(default=5, ge=1, le=30, description="Podcast duration in minutes")
-    voice: str = Field(default="en-US-Studio-O", description="TTS voice to use")
-    speaking_rate: float = Field(default=0.95, ge=0.5, le=2.0, description="Speaking rate")
+    voice: str = Field(default="en-US-Studio-Q", description="Gemini's modern TTS voice")
+    speaking_rate: float = Field(default=1.0, ge=0.5, le=2.0, description="Speaking rate")
 
 class PodcastResponse(BaseModel):
     job_id: str
