@@ -26,7 +26,9 @@ class TestTwitterAgent(unittest.TestCase):
 
     @patch('agents.twitter_agent.tweepy.Client')
     def test_fetch_twitter_posts_api_error(self, mock_client):
-        mock_client.side_effect = Exception('fail')
+        mock_instance = MagicMock()
+        mock_instance.search_recent_tweets.side_effect = Exception('fail')
+        mock_client.return_value = mock_instance
         result = fetch_twitter_posts('NYC', 'news', 1)
         self.assertIn('error', result)
 
