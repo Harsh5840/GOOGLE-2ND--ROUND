@@ -10,7 +10,7 @@ REDDIT_CLIENT_ID = os.getenv("REDDIT_CLIENT_ID")
 REDDIT_CLIENT_SECRET = os.getenv("REDDIT_CLIENT_SECRET")
 REDDIT_USER_AGENT = os.getenv("REDDIT_USER_AGENT")
 
-def fetch_reddit_posts(subreddit: str, limit: int = 5) -> Dict[str, Any]:
+def fetch_reddit_posts(subreddit: str, limit: int = 5) -> str:
     """
     Fetches top posts from a subreddit using PRAW.
 
@@ -24,7 +24,7 @@ def fetch_reddit_posts(subreddit: str, limit: int = 5) -> Dict[str, Any]:
     """
     if not (REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET and REDDIT_USER_AGENT):
         log_event("RedditTool", "Error: Reddit credentials not set.")
-        return {"error": "Reddit API credentials not configured."}
+        return "Reddit API credentials not configured."
 
     # Ensure limit is always an integer
     try:
@@ -42,15 +42,11 @@ def fetch_reddit_posts(subreddit: str, limit: int = 5) -> Dict[str, Any]:
         subreddit_obj = reddit.subreddit(subreddit)
         posts = []
         for post in subreddit_obj.hot(limit=actual_limit):
-            posts.append({
-                "title": post.title,
-                "id": post.id,
-                "author": str(post.author) if post.author else "N/A",
-                "created_utc": post.created_utc,
-                "url": post.url,
-            })
-        return {"posts": posts}
+            posts.append(f"{post.title} (by {str(post.author) if post.author else 'N/A'})")
+        if not posts:
+            return f"No hot posts found in r/{subreddit}."
+        return f"Top posts in r/{subreddit}: " + " | ".join(posts)
     except Exception as e:
         error_msg = f"Reddit API error: {e}"
         log_event("RedditTool", error_msg)
-        return {"error": error_msg} 
+        return error_msg 

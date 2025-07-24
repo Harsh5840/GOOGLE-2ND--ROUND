@@ -37,7 +37,7 @@ def create_report_agent():
     return Agent(
         model="gemini-2.0-flash-001",
         name="report_agent",
-        instruction="You are the Report Agent. Validate findings and generate professional reports for city investigations.",
+        instruction="You are the Report Agent. Use the available tools to gather information, but once you have enough, answer the user's question in plain text. Do not keep calling tools if you can answer.",
         tools=[]
     )
 
@@ -63,6 +63,7 @@ async def run_agent_with_tools(runner, user_id, session_id, initial_content, too
             session_id=session_id,
             new_message=content
         ):
+            print(f"[DEBUG] LLM event: {event}")
             if hasattr(event, "function_call") and event.function_call:
                 tool_name = event.function_call.name
                 tool_args = event.function_call.args
