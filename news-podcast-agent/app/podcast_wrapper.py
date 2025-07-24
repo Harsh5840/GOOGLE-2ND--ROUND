@@ -76,8 +76,8 @@ class PodcastAgent:
         target_words = duration_minutes * 150
         
         script_parts = [
-            f"Welcome to your local news update for {city}.",
-            "Here are today's top stories."
+            f"Hello and welcome to your daily news podcast! I'm your host bringing you the latest updates from {city}.",
+            "Let's dive into today's most important stories that matter to you."
         ]
         
         words_used = len(" ".join(script_parts).split())
@@ -97,7 +97,7 @@ class PodcastAgent:
                     script_parts.append(story)
                     words_used += story_words
         
-        script_parts.append("That's all for your local news update. Stay informed and have a great day.")
+        script_parts.append(f"That wraps up today's news from {city}. Thank you for tuning in to your daily news podcast! Stay informed, stay connected, and we'll see you next time. Have a wonderful day!")
         
         return " ".join(script_parts)
     

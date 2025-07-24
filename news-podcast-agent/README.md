@@ -106,7 +106,7 @@ make install && make playground
 | `make dev`       | Start the ADK API server and React frontend development server simultaneously |
 | `make dev-backend`       | Start the ADK API server |
 | `make dev-frontend`       | Start the React frontend development server |
-| `make playground`    | Launch Streamlit interface for testing agent locally and remotely |
+| `make api`           | Start the FastAPI server for REST API endpoints                   |
 | `make backend`       | Deploy agent to Agent Engine |
 | `make test`          | Run unit and integration tests                                                              |
 | `make lint`          | Run code quality checks (codespell, ruff, mypy)                                             |
@@ -120,23 +120,26 @@ For full command options and usage, refer to the [Makefile](Makefile).
 
 The News Podcast Agent creates personalized local news podcasts for any city. Here's how to use it:
 
-### Using the Streamlit Playground
+### Using the FastAPI Server
 
-1. Start the Streamlit playground:
+1. Start the FastAPI server:
    ```bash
-   make playground
+   python -m app.api_server
+   # or
+   uvicorn app.api_server:app --reload
    ```
 
-2. In the web interface:
-   - Enter the name of a city (e.g., "Seattle", "New York", "London")
-   - Select the desired podcast length (short, medium, or long)
-   - Click "Generate Podcast"
+2. Access the API endpoints:
+   - **Generate Podcast**: `POST /api/v1/podcast`
+   - **Get News**: `GET /api/v1/news/{city}`
+   - **API Documentation**: `http://localhost:8000/docs`
 
-3. The agent will:
-   - Research recent local news for the specified city
-   - Create a podcast script summarizing the news
-   - Generate an audio file using Google Cloud Text-to-Speech
-   - Display the script and audio player in the interface
+3. Example API request:
+   ```bash
+   curl -X POST "http://localhost:8000/api/v1/podcast" \
+        -H "Content-Type: application/json" \
+        -d '{"city": "Bengaluru", "duration_minutes": 5}'
+   ```
 
 ### Using the Command Line
 

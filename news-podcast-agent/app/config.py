@@ -60,6 +60,7 @@ class ResearchConfiguration:
     max_search_iterations: int = 5
     news_api_key: str = os.getenv("NEWS_API_KEY", "")
     google_api_key: str = os.getenv("GOOGLE_API_KEY", "your-google-api-key-here")
+    default_city: str = "Bengaluru"
 
 
 config = ResearchConfiguration()

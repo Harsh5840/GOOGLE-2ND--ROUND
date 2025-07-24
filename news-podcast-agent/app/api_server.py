@@ -16,7 +16,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from .config import config
+from app.config import config
 from .tools import synthesize_speech, fetch_local_news
 from .podcast_wrapper import PodcastAgent
 
@@ -41,7 +41,7 @@ job_status: Dict[str, Dict[str, Any]] = {}
 
 # Pydantic models for request/response
 class PodcastRequest(BaseModel):
-    city: str = Field(..., description="City name for local news")
+    city: str = Field(default=config.default_city, description="City name for local news")
     duration_minutes: int = Field(default=5, ge=1, le=30, description="Podcast duration in minutes")
     voice: str = Field(default="en-US-Studio-O", description="TTS voice to use")
     speaking_rate: float = Field(default=0.95, ge=0.5, le=2.0, description="Speaking rate")

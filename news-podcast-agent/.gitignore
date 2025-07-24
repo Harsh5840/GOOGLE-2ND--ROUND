@@ -11,8 +11,7 @@ __pycache__/
 # C extensions
 *.so
 
-# Environment variables and secrets
-.env
+# Environment variables and secrets 
 .env.local
 .env.production
 *.key

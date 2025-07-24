@@ -30,6 +30,7 @@ from vertexai import agent_engines
 from vertexai.preview.reasoning_engines import AdkApp
 
 from .agent import root_agent  # Now the podcast orchestrator agent
+from .config import config
 from .utils.gcs import create_bucket_if_not_exists
 from .utils.tracing import CloudTraceLoggingSpanExporter
 from .utils.typing import Feedback
@@ -172,7 +173,7 @@ if __name__ == "__main__":
         from google.genai import types
 
         print("\n==== Local Podcast Agent Test ====")
-        city = input("Enter city for local news: ")
+        city = input(f"Enter city for local news (default: {config.default_city}): ").strip() or config.default_city
         length = input("Enter desired podcast length (minutes): ")
 
         prompt = f"Create a {length}-minute podcast for {city}."

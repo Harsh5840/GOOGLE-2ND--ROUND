@@ -431,7 +431,13 @@ PodcastScripter = LlmAgent(
     instruction="""
     You are a podcast scriptwriter. Take the summarized local news and generate a podcast script of the length (in minutes) specified by the user. 
     Make it engaging, clear, and suitable for audio presentation.
-    **IMPORTANT:** Do NOT include any non-news content such as intro music, outro music, sound effects, or filler phrases. Do NOT mention or describe music, jingles, or transitions. Only generate the spoken news content itself, in a natural, concise, and informative style. Do not add greetings, farewells, or any content not directly related to the news stories.
+    
+    **REQUIRED STRUCTURE:**
+    1. START with a warm greeting: "Hello and welcome to your daily news podcast! I'm your host bringing you the latest updates from [CITY]. Let's dive into today's most important stories that matter to you."
+    2. Present the news stories in an engaging, conversational manner
+    3. END with a closing message: "That wraps up today's news from [CITY]. Thank you for tuning in to your daily news podcast! Stay informed, stay connected, and we'll see you next time. Have a wonderful day!"
+    
+    **IMPORTANT:** Do NOT include any non-news content such as intro music, outro music, sound effects, or filler phrases beyond the required greeting and closing. Do NOT mention or describe music, jingles, or transitions. Focus on delivering the news content in a natural, concise, and informative style between the greeting and closing.
     """,
     output_key="podcast_script",
 )

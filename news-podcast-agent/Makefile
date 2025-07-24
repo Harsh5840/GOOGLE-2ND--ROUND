@@ -1,6 +1,6 @@
 # Makefile for news-podcast-agent
 
-.PHONY: install dev dev-backend dev-frontend playground backend test lint setup-dev-env
+.PHONY: install dev dev-backend dev-frontend api backend test lint setup-dev-env
 
 # Install dependencies
 install:
@@ -19,9 +19,9 @@ dev-backend:
 dev-frontend:
 	cd frontend && npm start
 
-# Launch Streamlit interface for testing agent locally and remotely
-playground:
-	uv run streamlit run playground.py
+# Start FastAPI server for REST API endpoints
+api:
+	uv run uvicorn app.api_server:app --reload --host 0.0.0.0 --port 8000
 
 # Deploy agent to Agent Engine
 backend:

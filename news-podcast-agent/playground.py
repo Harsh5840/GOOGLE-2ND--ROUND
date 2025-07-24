@@ -19,6 +19,7 @@ from google.adk.sessions import InMemorySessionService
 from google.adk.runners import Runner
 from google.genai import types
 from app.agent import root_agent
+from app.config import config
 
 # Set up the Streamlit page
 st.set_page_config(page_title="News Podcast Agent Playground", page_icon="🎙️")
@@ -45,7 +46,7 @@ for message in st.session_state.messages:
 with st.form(key="podcast_form"):
     col1, col2 = st.columns(2)
     with col1:
-        city = st.text_input("City for local news:", placeholder="e.g., New York")
+        city = st.text_input("City for local news:", value=config.default_city, placeholder="e.g., New York")
     with col2:
         podcast_length = st.slider("Podcast length (minutes):", 1, 10, 3)
     

@@ -1,5 +1,5 @@
-# Core dependencies for news-podcast-agent
-# Based on pyproject.toml dependencies
+# News Podcast Agent - Production Dependencies
+# Essential packages for FastAPI endpoints and local CLI testing
 
 # Google Cloud and AI Platform
 google-adk~=1.6.0
@@ -10,22 +10,11 @@ google-cloud-aiplatform[evaluation,agent-engines]~=1.103.0
 # Environment and configuration
 python-dotenv~=1.0.0
 
-# Web framework
+# FastAPI web framework
 fastapi~=0.104.0
 uvicorn[standard]~=0.24.0
 pydantic~=2.5.0
 python-multipart~=0.0.6
 
-# Additional dependencies for news API
+# News API client
 newsapi-python~=0.2.6
-
-# Audio processing (if needed)
-google-cloud-texttospeech~=2.16.0
-
-# Development dependencies (optional)
-# pytest>=8.3.4
-# pytest-asyncio>=0.23.8
-# nest-asyncio>=1.6.0
-# ruff>=0.4.6
-# mypy~=1.15.0
-# codespell~=2.2.0
