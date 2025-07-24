@@ -29,6 +29,30 @@ def create_data_agent():
         tools=tools
     )
 
+def create_fallback_llm_agent():
+    return Agent(
+        model="gemini-2.0-flash-001",
+        name="llm_fallback_agent",
+        instruction="You are a helpful assistant. Answer the user's question as best as you can.",
+        tools=[]
+    )
+
+async def run_llm_fallback(query: str, context: dict = None) -> str:
+    agent = create_fallback_llm_agent()
+    runner = Runner(agent=agent, app_name=COMMON_APP_NAME, session_service=session_service)
+    user_id = context.get("user_id", "testuser") if context else "testuser"
+    session_id = context.get("session_id", str(uuid.uuid4())) if context else str(uuid.uuid4())
+    content = types.Content(role="user", parts=[types.Part(text=query)])
+    response_text = ""
+    async for event in runner.run_async(
+        user_id=user_id,
+        session_id=session_id,
+        new_message=content
+    ):
+        if hasattr(event, "text") and event.text:
+            response_text += event.text
+    return response_text
+
 async def tool_dispatcher(tool_name, tool_args):
     func = TOOL_FUNCTIONS.get(tool_name)
     if not func:
@@ -62,6 +86,7 @@ async def run_agent_with_tools(runner, user_id, session_id, initial_content, too
                 response_text += event.text
         if not function_call_found:
             break
+    print(f"[DEBUG] run_agent_with_tools final response_text: {response_text}")
     return response_text
 
 async def run_data_agent(query: str, context: dict = None) -> dict:
@@ -71,4 +96,8 @@ async def run_data_agent(query: str, context: dict = None) -> dict:
     session_id = context.get("session_id", str(uuid.uuid4())) if context else str(uuid.uuid4())
     content = types.Content(role="user", parts=[types.Part(text=query)])
     response_text = await run_agent_with_tools(runner, user_id, session_id, content, tool_dispatcher)
+    if not response_text:
+        print("[DEBUG] Falling back to plain LLM agent.")
+        response_text = await run_llm_fallback(query, context)
+    print(f"[DEBUG] run_data_agent returning: {response_text}")
     return {"data_agent_response": response_text} 
