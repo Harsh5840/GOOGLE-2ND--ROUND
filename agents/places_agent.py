@@ -32,8 +32,17 @@ async def run_places_agent(location: str, max_results: int = 3, user_id: str = "
     content = types.Content(role="user", parts=[types.Part(text=f"Get must-visit places near {location} (max {max_results})")])
     log_event("PlacesAgent", f"Input: location={location}, max_results={max_results}")
     result = ""
+    function_result = None
     async for event in runner.run_async(user_id=user_id, session_id=session_id, new_message=content):
+        log_event("PlacesAgent", f"Event: {event}")
         if hasattr(event, 'text') and event.text:
             result += event.text
-    log_event("PlacesAgent", f"Result: {result}")
-    return result 
+        if hasattr(event, 'parts') and event.parts:
+            for part in event.parts:
+                if hasattr(part, 'function_response') and part.function_response:
+                    function_result = part.function_response.response.get('result')
+    log_event("PlacesAgent", f"Result: {result!r}")
+    if not result.strip() and function_result:
+        log_event("PlacesAgent", f"Returning function_result: {function_result}")
+        return function_result
+    return result.strip() 

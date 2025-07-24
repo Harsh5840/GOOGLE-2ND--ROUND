@@ -80,6 +80,7 @@ def get_must_visit_places_nearby(location: str, max_results: int = 3) -> str:
             rating = place.get("rating")
             address = place.get("vicinity")
             must_visit.append(f"{name} (Rating: {rating}, Address: {address})")
+        log_event("MapsTool", f"must_visit: {must_visit}")
         return f"Must-visit places near {location}: " + "; ".join(must_visit)
     except Exception as e:
         log_event("MapsTool", f"Error in get_must_visit_places_nearby: {e}")

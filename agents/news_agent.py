@@ -30,7 +30,14 @@ async def run_news_agent(city: str, limit: int = 5, user_id: str = "testuser", s
     await session_service.create_session(session_id=session_id, user_id=user_id, app_name=COMMON_APP_NAME)
     content = types.Content(role="user", parts=[types.Part(text=f"Get recent news for {city} (limit {limit})")])
     result = ""
+    function_result = None
     async for event in runner.run_async(user_id=user_id, session_id=session_id, new_message=content):
         if hasattr(event, 'text') and event.text:
             result += event.text
-    return result 
+        if hasattr(event, 'parts') and event.parts:
+            for part in event.parts:
+                if hasattr(part, 'function_response') and part.function_response:
+                    function_result = part.function_response.response.get('result')
+    if not result.strip() and function_result:
+        return function_result
+    return result.strip() 
