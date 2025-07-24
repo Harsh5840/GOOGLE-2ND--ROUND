@@ -6,11 +6,9 @@ from unittest.mock import patch, MagicMock
 from agents.googlemaps_agent import get_best_route, GoogleMapsAgent
 
 class TestGoogleMapsAgent(unittest.TestCase):
-    @patch('agents.googlemaps_agent.googlemaps.Client')
-    def test_get_best_route_success(self, mock_client):
-        mock_instance = MagicMock()
-        mock_client.return_value = mock_instance
-        mock_instance.directions.return_value = [{
+    @patch('agents.googlemaps_agent.gmaps')
+    def test_get_best_route_success(self, mock_gmaps):
+        mock_gmaps.directions.return_value = [{
             'summary': 'Main St',
             'legs': [{
                 'distance': {'text': '5 km'},
@@ -27,15 +25,15 @@ class TestGoogleMapsAgent(unittest.TestCase):
         self.assertIn('summary', result)
         self.assertEqual(result['summary'], 'Main St')
 
-    @patch('agents.googlemaps_agent.googlemaps.Client')
-    def test_get_best_route_no_key(self, mock_client):
+    @patch('agents.googlemaps_agent.gmaps')
+    def test_get_best_route_no_key(self, mock_gmaps):
         with patch('agents.googlemaps_agent.GOOGLE_MAPS_API_KEY', None):
             result = get_best_route('A', 'B')
             self.assertIn('error', result)
 
-    @patch('agents.googlemaps_agent.googlemaps.Client')
-    def test_get_best_route_api_error(self, mock_client):
-        mock_client.side_effect = Exception('fail')
+    @patch('agents.googlemaps_agent.gmaps')
+    def test_get_best_route_api_error(self, mock_gmaps):
+        mock_gmaps.directions.side_effect = Exception('fail')
         result = get_best_route('A', 'B')
         self.assertIn('error', result)
 
