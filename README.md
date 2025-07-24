@@ -1,17 +1,13 @@
 # 🌐 CityScape
 
-<p align="center">
-  <img src="logo.jpeg" alt="CityScape Dashboard Preview" />
-</p>
+![logo](logo.jpeg)
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
 [![Google Cloud](https://img.shields.io/badge/Google%20Cloud-Vertex%20AI-orange.svg)](https://cloud.google.com/vertex-ai)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-<p align="center">
-  <img src="demo.png" alt="CityScape Dashboard Preview" />
-</p>
+![CityScape Dashboard Preview](demo.png)
 
 CityScape is an intelligent, agent-driven platform for real-time city event analysis and prediction. By processing multi-source data streams (social media, user uploads, web scraping), CityScape delivers live insights, proactive alerts, and user-specific summaries through an interactive dashboard. Built on Google Cloud and agentic AI, it empowers cities with actionable intelligence.
 
