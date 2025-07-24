@@ -118,8 +118,13 @@ async def chat_router(query: UserQuery):
     log_event("Orchestrator", f"Agent reply: {reply!r}")
 
     # GENERAL GEMINI FALLBACK
-    if not reply.strip():
-        log_event("Orchestrator", "No reply from any tool or agent, falling back to Gemini LLM.")
+    if (
+        not reply.strip() or
+        reply.lower().startswith("error fetching") or
+        reply.lower().startswith("no posts found") or
+        "rate limit" in reply.lower()
+    ):
+        log_event("Orchestrator", "No valid reply from tool, falling back to Gemini LLM.")
         reply = await run_gemini_fallback_agent(query.message, user_id=query.user_id)
 
     return BotResponse(intent=intent, entities=entities, reply=reply)
