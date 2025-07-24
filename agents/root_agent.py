@@ -23,9 +23,9 @@ def run_investigation(query: str, context: dict = None) -> dict:
     data_results = run_data_agent(query, context)
     context['data_results'] = data_results
     # Phase 3: Analysis
-    analysis_results = run_analysis_agent(query, research_results, data_results)
+    analysis_results = run_analysis_agent(query, research_results, data_results, context)
     context['analysis_results'] = analysis_results
     # Phase 4: Report
-    report_results = run_report_agent(query, research_results, data_results, analysis_results)
+    report_results = run_report_agent(query, research_results, data_results, analysis_results, context)
     context['report_results'] = report_results
     return report_results 
