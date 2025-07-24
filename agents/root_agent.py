@@ -1,8 +1,9 @@
 from google.adk.agents import Agent
-from agents.research_agent import create_research_agent, run_research_agent
+from agents.research_agent import create_research_agent, run_research_agent, session_service as research_session_service
 from agents.data_agent import create_data_agent, run_data_agent
 from agents.analysis_agent import create_analysis_agent, run_analysis_agent
 from agents.report_agent import create_report_agent, run_report_agent
+import uuid
 
 # Root Agent definition (unchanged)
 def create_root_agent():
@@ -16,6 +17,16 @@ def create_root_agent():
 # Phase-based orchestration with real state passing
 def run_investigation(query: str, context: dict = None) -> dict:
     context = context or {}
+    if 'session_id' not in context:
+        context['session_id'] = str(uuid.uuid4())
+    if 'user_id' not in context:
+        context['user_id'] = 'testuser'
+    # Create the session ONCE, before any agent runs
+    research_session_service.create_session(
+        session_id=context['session_id'],
+        user_id=context['user_id'],
+        app_name="research_agent"
+    )
     # Phase 1: Research
     research_results = run_research_agent(query, context)
     context['research_results'] = research_results

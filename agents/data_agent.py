@@ -30,12 +30,6 @@ def run_data_agent(query: str, context: dict = None) -> dict:
     runner = Runner(agent=agent, app_name="data_agent", session_service=session_service)
     user_id = context.get("user_id", "testuser") if context else "testuser"
     session_id = context.get("session_id", str(uuid.uuid4())) if context else str(uuid.uuid4())
-    # Create the session before running
-    session_service.create_session(
-        session_id=session_id,
-        user_id=user_id,
-        app_name=runner.app_name
-    )
     content = types.Content(role="user", parts=[types.Part(text=query)])
     events = runner.run(
         user_id=user_id,

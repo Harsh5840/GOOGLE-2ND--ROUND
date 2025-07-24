@@ -22,12 +22,6 @@ def run_report_agent(query: str, research_results: dict, data_results: dict, ana
     runner = Runner(agent=agent, app_name="report_agent", session_service=session_service)
     user_id = context.get("user_id", "testuser") if context else "testuser"
     session_id = context.get("session_id", str(uuid.uuid4())) if context else str(uuid.uuid4())
-    # Create the session before running
-    session_service.create_session(
-        session_id=session_id,
-        user_id=user_id,
-        app_name=runner.app_name
-    )
     prompt = f"Generate a final report for '{query}' using the following results:\nResearch: {research_results}\nData: {data_results}\nAnalysis: {analysis_results}"
     content = types.Content(role="user", parts=[types.Part(text=prompt)])
     events = runner.run(
