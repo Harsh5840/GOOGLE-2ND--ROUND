@@ -3,7 +3,6 @@ from tools.twitter import fetch_twitter_posts
 from tools.reddit import fetch_reddit_posts
 from tools.maps import get_best_route, get_must_visit_places_nearby
 from tools.news import fetch_city_news
-from tools.google_search import google_search
 from tools.rag import get_rag_fallback
 from tools.firestore import fetch_firestore_reports, store_user_query_history, fetch_similar_user_queries
 
@@ -70,18 +69,6 @@ fetch_city_news_decl = FunctionDeclaration(
         "required": ["city"],
     },
 )
-google_search_decl = FunctionDeclaration(
-    name="google_search",
-    description="Performs a Google search and returns a list of results.",
-    parameters={
-        "type": "OBJECT",
-        "properties": {
-            "query": {"type": "STRING", "description": "The search query."},
-            "num_results": {"type": "INTEGER", "description": "Number of results to return (default 5)."},
-        },
-        "required": ["query"],
-    },
-)
 get_rag_fallback_decl = FunctionDeclaration(
     name="get_rag_fallback",
     description="Fallback to a search-style Gemini query on background knowledge.",
@@ -141,12 +128,12 @@ CITY_TOOLS = [
         get_best_route_decl,
         get_must_visit_places_nearby_decl,
         fetch_city_news_decl,
-        google_search_decl,
         get_rag_fallback_decl,
         fetch_firestore_reports_decl,
         store_user_query_history_decl,
         fetch_similar_user_queries_decl,
-    ])
+    ]),
+    Tool.builtin("google_search"),  # Use the native Google Search tool
 ]
 
 TOOL_FUNCTIONS = {
@@ -155,11 +142,11 @@ TOOL_FUNCTIONS = {
     "get_best_route": get_best_route,
     "get_must_visit_places_nearby": get_must_visit_places_nearby,
     "fetch_city_news": fetch_city_news,
-    "google_search": google_search,
     "get_rag_fallback": get_rag_fallback,
     "fetch_firestore_reports": fetch_firestore_reports,
     "store_user_query_history": store_user_query_history,
     "fetch_similar_user_queries": fetch_similar_user_queries,
+    # Native google_search will be handled by ADK
 }
 
 SYSTEM_PROMPT = [
@@ -194,7 +181,8 @@ def run_city_agent(query: str) -> str:
                 result = TOOL_FUNCTIONS[function_name](**function_args)
                 tool_outputs.append(Part.from_function_response(name=function_name, response=result))
             else:
-                tool_outputs.append(Part.from_function_response(name=function_name, response={"error": f"Unknown tool: {function_name}"}))
+                # For built-in tools like google_search, let ADK handle the call natively
+                tool_outputs.append(Part.from_function_response(name=function_name, response={}))
         final_response = city_agent_session.send_message(tool_outputs)
         return final_response.text
     else:
