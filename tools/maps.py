@@ -88,11 +88,14 @@ def get_best_route(current_location: str, destination: str, mode: str = "driving
         origin_coords = get_location_coordinates(current_location)
         if origin_coords:
             locations_to_display.append({
+                "id": f"origin_{current_location.lower().replace(' ', '_')}",
                 "type": "origin",
                 "name": current_location,
                 "address": start,
                 "latitude": origin_coords["lat"],
                 "longitude": origin_coords["lng"],
+                "color": "#3b82f6",  # Blue for origin
+                "icon": "🚀",
                 "mood": mood_data["origin"]
             })
         
@@ -100,11 +103,14 @@ def get_best_route(current_location: str, destination: str, mode: str = "driving
         dest_coords = get_location_coordinates(destination)
         if dest_coords:
             locations_to_display.append({
+                "id": f"dest_{destination.lower().replace(' ', '_')}",
                 "type": "destination",
                 "name": destination,
                 "address": end,
                 "latitude": dest_coords["lat"],
                 "longitude": dest_coords["lng"],
+                "color": "#ef4444",  # Red for destination
+                "icon": "🎯",
                 "mood": mood_data["destination"]
             })
         
@@ -113,11 +119,14 @@ def get_best_route(current_location: str, destination: str, mode: str = "driving
             for i, step in enumerate(route["legs"][0]["steps"][::5]):  # Every 5th step to avoid too many points
                 if step.get("end_location"):
                     locations_to_display.append({
+                        "id": f"waypoint_{i+1}",
                         "type": "waypoint",
                         "name": f"Waypoint {i+1}",
                         "address": step.get("end_address", ""),
                         "latitude": step["end_location"]["lat"],
                         "longitude": step["end_location"]["lng"],
+                        "color": "#f59e0b",  # Orange for waypoints
+                        "icon": "📍",
                         "mood": None  # Waypoints don't have mood data
                     })
         
@@ -275,11 +284,14 @@ def get_must_visit_places_nearby(location: str, max_results: int = 3) -> Dict[st
         
         # Add main location
         locations_to_display.append({
+            "id": f"main_{location.lower().replace(' ', '_')}",
             "type": "main_location",
             "name": location,
             "address": geocode[0].get("formatted_address", location),
             "latitude": lat,
             "longitude": lng,
+            "color": "#3b82f6",  # Blue for main location
+            "icon": "📍",
             "mood": mood_data
         })
         
@@ -297,12 +309,15 @@ def get_must_visit_places_nearby(location: str, max_results: int = 3) -> Dict[st
                 # Don't get mood data for individual places to avoid expensive API calls
                 # Just use the main location's mood data for all places
                 locations_to_display.append({
+                    "id": f"place_{name.lower().replace(' ', '_').replace(',', '').replace('.', '')}",
                     "type": "must_visit",
                     "name": name,
                     "address": address,
                     "latitude": place_lat,
                     "longitude": place_lng,
                     "rating": rating,
+                    "color": "#10b981",  # Green for must-visit places
+                    "icon": "🏛️",
                     "mood": mood_data  # Use the main location's mood data
                 })
         
