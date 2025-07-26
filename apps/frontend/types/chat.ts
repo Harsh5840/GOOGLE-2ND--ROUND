@@ -7,9 +7,9 @@ export interface ChatResponse {
 }
 
 export interface ChatMessage {
-  id: number;
-  type: 'user' | 'bot';
-  message: string;
+  id: string;
+  sender: 'user' | 'bot';
+  text: string;
   timestamp: Date;
   entities?: {
     [key: string]: any;

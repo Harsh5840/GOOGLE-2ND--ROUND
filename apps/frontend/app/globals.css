@@ -102,26 +102,59 @@
 }
 
 @keyframes swing {
-  0%,
-  100% {
-    transform: rotate(0deg);
+  0%, 100% {
+    transform: rotate(-3deg);
   }
-  25% {
-    transform: rotate(15deg);
-  }
-  75% {
-    transform: rotate(-15deg);
+  50% {
+    transform: rotate(3deg);
   }
 }
 
 @keyframes pulse {
-  0%,
-  100% {
+  0%, 100% {
     opacity: 1;
+    transform: scale(1);
   }
   50% {
-    opacity: 0.5;
+    opacity: 0.8;
+    transform: scale(1.1);
   }
+}
+
+/* Custom Google Maps Markers */
+.custom-marker-label {
+  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif !important;
+  font-size: 20px !important;
+  font-weight: bold !important;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5) !important;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)) !important;
+}
+
+/* High severity event markers pulse animation */
+.custom-marker-label.high-severity {
+  animation: pulse 2s infinite !important;
+}
+
+/* Event type specific marker styles */
+.custom-marker-label[data-event-type="accident"] {
+  color: #ef4444 !important;
+}
+
+.custom-marker-label[data-event-type="traffic"] {
+  color: #f59e0b !important;
+}
+
+.custom-marker-label[data-event-type="event"] {
+  color: #10b981 !important;
+}
+
+.custom-marker-label[data-event-type="construction"] {
+  color: #8b5cf6 !important;
+}
+
+.custom-marker-label[data-event-type="emergency"] {
+  color: #dc2626 !important;
+  animation: pulse 1.5s infinite !important;
 }
 
 .animate-fadeIn {

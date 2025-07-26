@@ -1,5 +1,5 @@
 export interface CityEvent {
-  id: number
+  id: string
   type: string
   title: string
   location: string
@@ -12,7 +12,7 @@ export interface CityEvent {
     verified: boolean
     followers: number
   }
-  coordinates: { x: number; y: number }
+  coordinates: { lat: number; lng: number }
   likes: number
   comments: number
   shares: number

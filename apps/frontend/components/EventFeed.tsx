@@ -12,7 +12,7 @@ interface EventFeedProps {
 }
 
 const EventFeed: React.FC<EventFeedProps> = ({
-  events,
+  events = [],
   isDarkMode,
   onLike,
   onBookmark,

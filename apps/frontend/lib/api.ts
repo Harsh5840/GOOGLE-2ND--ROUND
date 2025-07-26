@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { ChatResponse } from '@/types/chat';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5000/api/v1';
 
 export async function sendChatMessage(userId: string, message: string): Promise<ChatResponse> {
   try {
@@ -24,6 +24,67 @@ export async function getLocationMood(location: string, datetimeStr?: string): P
     return response.data;
   } catch (error: any) {
     console.error('Error fetching location mood:', error);
+    throw error;
+  }
+}
+
+// New API functions for reports and events
+export async function submitReport(reportData: {
+  type: string;
+  title: string;
+  location: string;
+  coordinates: { lat: number; lng: number };
+  severity: string;
+  summary: string;
+  image?: string;
+  tags: string[];
+  customEmoji?: string;
+}): Promise<any> {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/reports`, reportData);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error submitting report:', error);
+    throw error;
+  }
+}
+
+export async function getEvents(filters?: {
+  type?: string;
+  location?: string;
+  severity?: string;
+  search?: string;
+}): Promise<any[]> {
+  try {
+    const params = filters || {};
+    const response = await axios.get(`${API_BASE_URL}/events`, { params });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error fetching events:', error);
+    throw error;
+  }
+}
+
+export async function searchLocation(query: string): Promise<any[]> {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/search/location`, {
+      params: { query }
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error searching location:', error);
+    throw error;
+  }
+}
+
+export async function geocodeLocation(address: string): Promise<{ lat: number; lng: number }> {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/geocode`, {
+      params: { address }
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error geocoding location:', error);
     throw error;
   }
 }
