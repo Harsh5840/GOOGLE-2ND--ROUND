@@ -182,9 +182,10 @@ def get_all_event_photos() -> List[Dict]:
     """Get all uploaded event photos with their metadata from Firestore"""
     try:
         from tools.firestore import db, EVENT_PHOTOS_COLLECTION
+        from google.cloud import firestore
         
         # Get photos from Firestore
-        photos_ref = db.collection(EVENT_PHOTOS_COLLECTION).order_by("upload_timestamp", direction="desc")
+        photos_ref = db.collection(EVENT_PHOTOS_COLLECTION).order_by("upload_timestamp", direction=firestore.Query.DESCENDING)
         docs = photos_ref.stream()
         
         photos = []
