@@ -269,3 +269,47 @@ export async function getLocationEventPhotos(
     throw error;
   }
 }
+
+// User Data Retention API
+export async function exportUserData(userId: string): Promise<any> {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/user/export`, { user_id: userId });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error exporting user data:', error);
+    throw error;
+  }
+}
+
+export async function getUserDataExports(userId: string): Promise<any> {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/user/${userId}/exports`);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error fetching user data exports:', error);
+    throw error;
+  }
+}
+
+export async function restoreUserData(userId: string, backupData: any): Promise<any> {
+  try {
+    const formData = new FormData();
+    formData.append('backup_data', JSON.stringify(backupData));
+    
+    const response = await axios.post(`${API_BASE_URL}/user/${userId}/restore`, formData);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error restoring user data:', error);
+    throw error;
+  }
+}
+
+export async function getUserRetentionAnalytics(userId: string): Promise<any> {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/user/${userId}/retention-analytics`);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error fetching user retention analytics:', error);
+    throw error;
+  }
+}

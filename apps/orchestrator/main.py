@@ -40,7 +40,11 @@ from tools.firestore import (
     get_unified_data,
     get_aggregated_location_data,
     store_user_query_history,
-    get_user_query_history
+    get_user_query_history,
+    export_user_data,
+    get_user_data_exports,
+    restore_user_data,
+    get_user_retention_analytics
 )
 
 # Initialize Google Cloud Vertex AI
@@ -441,6 +445,60 @@ async def get_location_event_photos_endpoint(
         return {"photos": photos}
     except Exception as e:
         log_event("Orchestrator", f"Error getting location event photos: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# User Data Retention Endpoints
+@app.post("/user/export")
+async def export_user_data_endpoint(user_id: str = Form(...)):
+    """Export all user data for backup and retention"""
+    try:
+        result = export_user_data(user_id)
+        if result["success"]:
+            return result
+        else:
+            raise HTTPException(status_code=500, detail=result["error"])
+    except Exception as e:
+        log_event("Orchestrator", f"Error exporting user data for {user_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/user/{user_id}/exports")
+async def get_user_data_exports_endpoint(user_id: str):
+    """Get user's data export history"""
+    try:
+        exports = get_user_data_exports(user_id)
+        return {"exports": exports}
+    except Exception as e:
+        log_event("Orchestrator", f"Error getting user data exports for {user_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/user/{user_id}/restore")
+async def restore_user_data_endpoint(
+    user_id: str,
+    backup_data: str = Form(...)  # JSON string
+):
+    """Restore user data from backup"""
+    try:
+        data = json.loads(backup_data)
+        result = restore_user_data(user_id, data)
+        if result["success"]:
+            return result
+        else:
+            raise HTTPException(status_code=400, detail=result["error"])
+    except Exception as e:
+        log_event("Orchestrator", f"Error restoring user data for {user_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/user/{user_id}/retention-analytics")
+async def get_user_retention_analytics_endpoint(user_id: str):
+    """Get analytics about user data retention and usage"""
+    try:
+        result = get_user_retention_analytics(user_id)
+        if result["success"]:
+            return result
+        else:
+            raise HTTPException(status_code=500, detail=result["error"])
+    except Exception as e:
+        log_event("Orchestrator", f"Error getting retention analytics for {user_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/location_mood")
