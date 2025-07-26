@@ -16,7 +16,6 @@ from google.cloud import aiplatform
 from shared.utils.logger import log_event
 from typing import Optional, List
 import json
-import io
 
 from agents.agent_router import agent_router
 from tools.reddit import fetch_reddit_posts
@@ -51,7 +50,6 @@ aiplatform.init(project=os.getenv("GCP_PROJECT_ID"), location=os.getenv("GCP_REG
 app = FastAPI()
 
 # Static file serving for uploaded images
-# Mount static files for uploaded images
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # Request schema
@@ -365,9 +363,6 @@ async def upload_event_photo_endpoint(
     description: Optional[str] = Form(None)
 ):
     """Upload a geotagged image for city event reporting."""
-    """
-    Upload a geotagged image for city event reporting.
-    """
     try:
         # Validate file type
         if not file.content_type.startswith('image/'):
@@ -401,9 +396,6 @@ async def upload_event_photo_endpoint(
 @app.get("/event_photos", response_model=List[EventPhotoResponse])
 async def get_event_photos():
     """Get all uploaded event photos with their metadata and Gemini summaries."""
-    """
-    Get all uploaded event photos with their metadata and Gemini summaries.
-    """
     try:
         photos = get_all_event_photos()
         return [EventPhotoResponse(**photo) for photo in photos]
@@ -414,9 +406,6 @@ async def get_event_photos():
 @app.get("/event_photos/{photo_id}", response_model=EventPhotoResponse)
 async def get_event_photo(photo_id: str):
     """Get a specific event photo by ID."""
-    """
-    Get a specific event photo by ID.
-    """
     try:
         photo = get_event_photo_by_id(photo_id)
         if photo:
@@ -485,4 +474,5 @@ async def location_mood(
 if __name__ == "__main__":
     import uvicorn
     print("GOOGLE_MAPS_API_KEY (startup):", repr(os.getenv("GOOGLE_MAPS_API_KEY")))
+
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

@@ -268,6 +268,4 @@ export async function getLocationEventPhotos(
     console.error('Error fetching location event photos:', error);
     throw error;
   }
-=======
->>>>>>> geotag
 }

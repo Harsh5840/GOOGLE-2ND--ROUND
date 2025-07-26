@@ -12,29 +12,18 @@ import vertexai
 from vertexai.generative_models import GenerativeModel, Part
 
 from shared.utils.logger import log_event
-<<<<<<< HEAD
 from tools.firestore import store_event_photo_firestore, store_user_location
-=======
->>>>>>> geotag
 
 # Create uploads directory if it doesn't exist
 UPLOADS_DIR = Path("uploads/event_photos")
 UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
-<<<<<<< HEAD
 # Metadata storage file (keeping for backward compatibility)
-=======
-# Metadata storage file
->>>>>>> geotag
 METADATA_FILE = Path("data/event_photos_metadata.json")
 METADATA_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 def load_metadata() -> List[Dict]:
-<<<<<<< HEAD
     """Load existing metadata from file (legacy support)"""
-=======
-    """Load existing metadata from file"""
->>>>>>> geotag
     if METADATA_FILE.exists():
         try:
             with open(METADATA_FILE, 'r') as f:
@@ -44,11 +33,7 @@ def load_metadata() -> List[Dict]:
     return []
 
 def save_metadata(metadata: List[Dict]):
-<<<<<<< HEAD
     """Save metadata to file (legacy support)"""
-=======
-    """Save metadata to file"""
->>>>>>> geotag
     with open(METADATA_FILE, 'w') as f:
         json.dump(metadata, f, indent=2, default=str)
 
@@ -114,11 +99,7 @@ def upload_event_photo(
     description: Optional[str] = None
 ) -> Dict:
     """
-<<<<<<< HEAD
     Upload a geotagged image for city event reporting with Firestore integration.
-=======
-    Upload a geotagged image for city event reporting.
->>>>>>> geotag
     
     Args:
         image_data: Raw image bytes
@@ -156,7 +137,6 @@ def upload_event_photo(
             "status": "uploaded"
         }
         
-<<<<<<< HEAD
         # Store in Firestore (primary storage)
         firestore_result = store_event_photo_firestore(metadata)
         if not firestore_result.get("success"):
@@ -180,12 +160,6 @@ def upload_event_photo(
             save_metadata(existing_metadata)
         except Exception as e:
             log_event("ImageUpload", f"Warning: Failed to save local metadata: {str(e)}")
-=======
-        # Save metadata
-        existing_metadata = load_metadata()
-        existing_metadata.append(metadata)
-        save_metadata(existing_metadata)
->>>>>>> geotag
         
         log_event("ImageUpload", f"Successfully uploaded event photo {photo_id}")
         
@@ -205,15 +179,10 @@ def upload_event_photo(
         }
 
 def get_all_event_photos() -> List[Dict]:
-<<<<<<< HEAD
     """Get all uploaded event photos with their metadata (from local file for now)"""
     try:
         # For now, return from local file
         # TODO: Implement Firestore retrieval
-=======
-    """Get all uploaded event photos with their metadata"""
-    try:
->>>>>>> geotag
         metadata = load_metadata()
         
         # Add file URL for frontend access
@@ -227,15 +196,10 @@ def get_all_event_photos() -> List[Dict]:
         return []
 
 def get_event_photo_by_id(photo_id: str) -> Optional[Dict]:
-<<<<<<< HEAD
     """Get a specific event photo by ID (from local file for now)"""
     try:
         # For now, search in local file
         # TODO: Implement Firestore retrieval
-=======
-    """Get a specific event photo by ID"""
-    try:
->>>>>>> geotag
         metadata = load_metadata()
         
         for photo in metadata:

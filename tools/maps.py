@@ -87,3 +87,6 @@ def get_must_visit_places_nearby(location: str, max_results: int = 3) -> str:
         log_event("MapsTool", traceback.format_exc())
         log_event("MapsTool", f"Params: location='{location}'")
         return f"Exception occurred: {e}" 
+
+def color_location(location):
+    pass
