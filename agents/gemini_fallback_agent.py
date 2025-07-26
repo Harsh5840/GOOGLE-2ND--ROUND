@@ -1,12 +1,9 @@
 import os
 from dotenv import load_dotenv
 load_dotenv()
-import vertexai
-vertexai.init(
-    project=os.getenv("GOOGLE_CLOUD_PROJECT"),
-    location=os.getenv("GOOGLE_CLOUD_LOCATION")
-)
+
 from google.adk.agents import Agent
+from google.adk.tools import google_search
 from google.adk.runners import Runner
 from google.genai import types
 import uuid
@@ -16,8 +13,8 @@ def create_gemini_fallback_agent():
     return Agent(
         model="gemini-2.0-flash-001",
         name="gemini_fallback_agent",
-        instruction="You are a helpful assistant. Answer the user's question as best as you can. Do not use any tools.",
-        tools=[]
+        instruction="You are a helpful assistant. Answer the user's question as best as you can. Only use google search tool if gemini doesn't give answer.",
+        tools=[google_search]
     )
 
 
