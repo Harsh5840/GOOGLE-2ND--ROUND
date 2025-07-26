@@ -294,8 +294,8 @@ def get_must_visit_places_nearby(location: str, max_results: int = 3) -> Dict[st
             places_list.append(f"{name} (Rating: {rating}, Address: {address})")
             
             if place_lat and place_lng:
-                # Get mood data for each place
-                place_mood = get_location_mood_data(f"{name}, {address}")
+                # Don't get mood data for individual places to avoid expensive API calls
+                # Just use the main location's mood data for all places
                 locations_to_display.append({
                     "type": "must_visit",
                     "name": name,
@@ -303,7 +303,7 @@ def get_must_visit_places_nearby(location: str, max_results: int = 3) -> Dict[st
                     "latitude": place_lat,
                     "longitude": place_lng,
                     "rating": rating,
-                    "mood": place_mood
+                    "mood": mood_data  # Use the main location's mood data
                 })
         
         log_event("MapsTool", f"must_visit: {places_list}")
