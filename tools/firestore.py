@@ -12,16 +12,13 @@ load_dotenv()
 
 def initialize_firestore():
     """Initialize Firestore client with proper error handling"""
-    global db
-    
     try:
         # Method 1: Service account JSON file path
         firebase_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH")
         if firebase_path and os.path.exists(firebase_path):
             log_event("FirestoreTool", f"Using service account file: {firebase_path}")
             credentials = service_account.Credentials.from_service_account_file(firebase_path)
-            db = firestore.Client(credentials=credentials)
-            return True
+            return firestore.Client(credentials=credentials)
             
         # Method 2: Service account JSON content
         firebase_json = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
@@ -29,42 +26,77 @@ def initialize_firestore():
             try:
                 log_event("FirestoreTool", "Using service account JSON from environment variable")
                 credentials = service_account.Credentials.from_service_account_info(json.loads(firebase_json))
-                db = firestore.Client(credentials=credentials)
-                return True
+                return firestore.Client(credentials=credentials)
             except json.JSONDecodeError as e:
                 log_event("FirestoreTool", f"Invalid JSON in FIREBASE_SERVICE_ACCOUNT_JSON: {e}")
-                return False
+                return None
             except Exception as e:
                 log_event("FirestoreTool", f"Error parsing service account JSON: {e}")
-                return False
+                return None
                 
         # Method 3: Default credentials (GOOGLE_APPLICATION_CREDENTIALS)
         google_creds = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
         if google_creds and os.path.exists(google_creds):
             log_event("FirestoreTool", f"Using default credentials: {google_creds}")
-            db = firestore.Client()
-            return True
+            return firestore.Client()
             
         # Method 4: Default credentials without file
         log_event("FirestoreTool", "Using default credentials (GOOGLE_APPLICATION_CREDENTIALS)")
-        db = firestore.Client()
-        return True
+        return firestore.Client()
         
     except FileNotFoundError as e:
         log_event("FirestoreTool", f"Service account file not found: {e}")
-        return False
+        return None
     except PermissionError as e:
         log_event("FirestoreTool", f"Permission denied accessing service account file: {e}")
-        return False
+        return None
     except Exception as e:
         log_event("FirestoreTool", f"Failed to initialize Firestore: {e}")
-        return False
+        return None
 
 # Initialize Firestore client
 db = initialize_firestore()
 
 if db is None:
     log_event("FirestoreTool", "WARNING: Firestore client initialization failed. Some features may not work.")
+    # Create a dummy client to prevent crashes
+    class DummyFirestoreClient:
+        def collection(self, name):
+            return DummyCollection()
+    
+    class DummyCollection:
+        def document(self, name):
+            return DummyDocument()
+        def where(self, field, op, value):
+            return DummyQuery()
+        def stream(self):
+            return []
+        def order_by(self, field, direction=None):
+            return self
+    
+    class DummyDocument:
+        def get(self):
+            return DummyDocumentSnapshot()
+        def set(self, data):
+            return None
+        def update(self, data):
+            return None
+        def delete(self):
+            return None
+    
+    class DummyDocumentSnapshot:
+        def exists(self):
+            return False
+        def to_dict(self):
+            return {}
+    
+    class DummyQuery:
+        def stream(self):
+            return []
+        def limit(self, count):
+            return self
+    
+    db = DummyFirestoreClient()
 
 COLLECTION_NAME = os.getenv("FIREBASE_COLLECTION_NAME", "city_reports")
 USER_HISTORY_COLLECTION = "user_query_history"
@@ -201,11 +233,7 @@ def export_user_data(user_id: str) -> Dict[str, Any]:
 def get_user_data_exports(user_id: str) -> List[Dict[str, Any]]:
     """Get user's data export history"""
     try:
-        exports_ref = (
-            db.collection(USER_DATA_EXPORTS_COLLECTION)
-              .where("user_id", "==", user_id)
-              .order_by("export_timestamp", direction=firestore.Query.DESCENDING)
-        )
+        exports_ref = db.collection(USER_DATA_EXPORTS_COLLECTION).where("user_id", "==", user_id).order_by("export_timestamp", direction=firestore.Query.DESCENDING)
         
         docs = exports_ref.stream()
         return [doc.to_dict() for doc in docs]
@@ -351,21 +379,17 @@ def get_recent_user_location(user_id: str, hours: int = 24) -> Optional[Dict[str
     try:
         cutoff_time = datetime.utcnow() - timedelta(hours=hours)
         
-        locations_ref = (
-            db.collection(LOCATION_HISTORY_COLLECTION)
-              .where("user_id", "==", user_id)
-              .where("timestamp", ">=", cutoff_time.isoformat())
-              .order_by("timestamp", direction=firestore.Query.DESCENDING)
-              .limit(1)
-        )
+        # Use original .where() syntax for compatibility
+        recent_ref = db.collection(LOCATION_HISTORY_COLLECTION).where("user_id", "==", user_id).where("timestamp", ">=", cutoff_time.isoformat()).order_by("timestamp", direction=firestore.Query.DESCENDING).limit(1)
         
-        docs = list(locations_ref.stream())
-        if docs:
-            location_data = docs[0].to_dict()
+        docs = recent_ref.stream()
+        for doc in docs:
+            data = doc.to_dict()
             return {
-                "latitude": location_data["latitude"],
-                "longitude": location_data["longitude"]
+                "latitude": data.get("latitude"),
+                "longitude": data.get("longitude")
             }
+        
         return None
         
     except Exception as e:
@@ -373,19 +397,17 @@ def get_recent_user_location(user_id: str, hours: int = 24) -> Optional[Dict[str
         return None
 
 def get_user_location_history(user_id: str, days: int = 7) -> List[Dict[str, Any]]:
-    """Get user's location history for specified number of days"""
+    """Get user's location history for the specified number of days"""
     try:
         cutoff_time = datetime.utcnow() - timedelta(days=days)
         
-        locations_ref = (
-            db.collection(LOCATION_HISTORY_COLLECTION)
-              .where("user_id", "==", user_id)
-              .where("timestamp", ">=", cutoff_time.isoformat())
-              .order_by("timestamp", direction=firestore.Query.DESCENDING)
-        )
+        # Use original .where() syntax for compatibility
+        history_ref = db.collection(LOCATION_HISTORY_COLLECTION).where("user_id", "==", user_id).where("timestamp", ">=", cutoff_time.isoformat()).order_by("timestamp", direction=firestore.Query.DESCENDING)
         
-        docs = locations_ref.stream()
-        return [doc.to_dict() for doc in docs]
+        docs = history_ref.stream()
+        history = [doc.to_dict() for doc in docs]
+        
+        return history
         
     except Exception as e:
         log_event("FirestoreTool", f"Error getting location history for {user_id}: {e}")
@@ -557,26 +579,26 @@ def load_unified_data_to_firestore(location: str, data_sources: List[str] = None
         log_event("FirestoreTool", f"Error loading unified data to Firestore for {location}: {e}")
         return {"success": False, "error": str(e)}
 
-def get_unified_data_from_firestore(location: str, data_type: Optional[str] = None, 
+def get_unified_data_from_firestore(location: str, data_type: Optional[str] = None,
                                    hours: int = 24, force_refresh: bool = False) -> List[Dict[str, Any]]:
     """
-    Get unified data from Firestore. If force_refresh is True or data is stale, 
+    Get unified data from Firestore. If force_refresh is True or data is stale,
     it will reload data from sources first.
     """
     try:
         # Check if we need to refresh data
         if force_refresh:
             load_unified_data_to_firestore(location)
-        
+
         # Get data from Firestore using simple queries to avoid composite index requirements
         cutoff_time = datetime.utcnow() - timedelta(hours=hours)
-        
+
         # Get all documents for the location and filter in memory
         data_ref = db.collection(UNIFIED_DATA_COLLECTION).where("location", "==", location)
-        
+
         docs = data_ref.stream()
         all_data = [doc.to_dict() for doc in docs]
-        
+
         # Filter by timestamp and data_type in memory
         filtered_data = []
         for doc in all_data:
@@ -584,10 +606,10 @@ def get_unified_data_from_firestore(location: str, data_type: Optional[str] = No
             if doc_timestamp >= cutoff_time:
                 if data_type is None or doc.get("data_type") == data_type:
                     filtered_data.append(doc)
-        
+
         # Sort by timestamp (most recent first)
         filtered_data.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
-        
+
         # If no recent data and not forcing refresh, try to load fresh data
         if not filtered_data and not force_refresh:
             log_event("FirestoreTool", f"No recent data found for {location}, loading fresh data")
@@ -595,9 +617,9 @@ def get_unified_data_from_firestore(location: str, data_type: Optional[str] = No
             if load_result["success"]:
                 # Try to get the data again
                 return get_unified_data_from_firestore(location, data_type, hours, force_refresh=False)
-        
+
         return filtered_data
-        
+
     except Exception as e:
         log_event("FirestoreTool", f"Error getting unified data from Firestore for {location}: {e}")
         return []
@@ -735,12 +757,7 @@ def store_event_photo_firestore(photo_data: Dict[str, Any]) -> Dict[str, Any]:
 def get_user_event_photos(user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
     """Get all event photos uploaded by a specific user"""
     try:
-        photos_ref = (
-            db.collection(EVENT_PHOTOS_COLLECTION)
-              .where("user_id", "==", user_id)
-              .order_by("upload_timestamp", direction=firestore.Query.DESCENDING)
-              .limit(limit)
-        )
+        photos_ref = db.collection(EVENT_PHOTOS_COLLECTION).where("user_id", "==", user_id).order_by("upload_timestamp", direction=firestore.Query.DESCENDING).limit(limit)
         
         docs = photos_ref.stream()
         return [doc.to_dict() for doc in docs]
@@ -751,24 +768,24 @@ def get_user_event_photos(user_id: str, limit: int = 50) -> List[Dict[str, Any]]
 
 def get_location_event_photos(latitude: float, longitude: float, 
                             radius_km: float = 5.0, limit: int = 50) -> List[Dict[str, Any]]:
-    """Get event photos within a radius of specified coordinates"""
+    """Get event photos within a radius of the specified location"""
     try:
-        # Simple bounding box approximation (for production, use proper geospatial queries)
-        lat_degree = radius_km / 111.0  # Approximate km per degree latitude
-        lng_degree = radius_km / (111.0 * abs(latitude / 90.0))  # Approximate km per degree longitude
+        # Convert radius from km to degrees (approximate)
+        lat_degree = radius_km / 111.0  # 1 degree latitude ≈ 111 km
+        lng_degree = radius_km / (111.0 * abs(latitude / 90.0))  # Adjust for longitude
         
-        photos_ref = (
-            db.collection(EVENT_PHOTOS_COLLECTION)
-              .where("latitude", ">=", latitude - lat_degree)
-              .where("latitude", "<=", latitude + lat_degree)
-              .where("longitude", ">=", longitude - lng_degree)
-              .where("longitude", "<=", longitude + lng_degree)
-              .order_by("upload_timestamp", direction=firestore.Query.DESCENDING)
-              .limit(limit)
-        )
+        # Use original .where() syntax for compatibility
+        photos_ref = db.collection(EVENT_PHOTOS_COLLECTION).where("latitude", ">=", latitude - lat_degree).where("latitude", "<=", latitude + lat_degree).where("longitude", ">=", longitude - lng_degree).where("longitude", "<=", longitude + lng_degree).order_by("upload_timestamp", direction=firestore.Query.DESCENDING).limit(limit)
         
         docs = photos_ref.stream()
-        return [doc.to_dict() for doc in docs]
+        photos = []
+        for doc in docs:
+            photo_data = doc.to_dict()
+            # Add file URL for frontend access
+            photo_data["file_url"] = f"/uploads/event_photos/{photo_data.get('filename', '')}"
+            photos.append(photo_data)
+        
+        return photos
         
     except Exception as e:
         log_event("FirestoreTool", f"Error getting location event photos: {e}")
@@ -805,16 +822,16 @@ def get_user_query_history(user_id: str, limit: int = 20) -> List[Dict[str, Any]
     try:
         # Get all documents for the user and sort in memory to avoid composite index requirement
         history_ref = db.collection(USER_HISTORY_COLLECTION).where("user_id", "==", user_id)
-        
+
         docs = history_ref.stream()
         history = [doc.to_dict() for doc in docs]
-        
+
         # Sort by timestamp in descending order (most recent first)
         history.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
-        
+
         # Return limited results
         return history[:limit]
-        
+
     except Exception as e:
         log_event("FirestoreTool", f"Error getting user query history for {user_id}: {e}")
         return []
@@ -865,7 +882,7 @@ def clear_empty_cached_data(location: str, data_type: str) -> bool:
         # Get all data for the location and type
         data_ref = db.collection(UNIFIED_DATA_COLLECTION).where("location", "==", location)
         docs = data_ref.stream()
-        
+
         deleted_count = 0
         for doc in docs:
             doc_data = doc.to_dict()
@@ -873,12 +890,12 @@ def clear_empty_cached_data(location: str, data_type: str) -> bool:
                 # Check if data is empty or invalid
                 data_content = doc_data.get("data", {})
                 is_empty = False
-                
+
                 if data_type == "maps":
                     places = data_content.get("places", [])
                     # Check for empty places
                     is_empty = not places or len(places) == 0 or all(place.strip() == "" for place in places)
-                    
+
                     # Check for error messages in places
                     if not is_empty and places:
                         error_indicators = [
@@ -891,37 +908,37 @@ def clear_empty_cached_data(location: str, data_type: str) -> bool:
                         ]
                         places_text = " ".join(places).lower()
                         is_empty = any(indicator in places_text for indicator in error_indicators)
-                        
+
                 elif data_type == "news":
                     articles = data_content.get("articles", [])
                     is_empty = not articles or len(articles) == 0
-                    
+
                     # Check for error messages in articles
                     if not is_empty and articles:
                         error_indicators = ["error", "exception", "not found", "no articles found"]
                         articles_text = " ".join(articles).lower()
                         is_empty = any(indicator in articles_text for indicator in error_indicators)
-                        
+
                 elif data_type == "reddit":
                     posts = data_content.get("posts", [])
                     is_empty = not posts or len(posts) == 0
-                    
+
                     # Check for error messages in posts
                     if not is_empty and posts:
                         error_indicators = ["error", "exception", "not found", "no posts found"]
                         posts_text = " ".join(posts).lower()
                         is_empty = any(indicator in posts_text for indicator in error_indicators)
-                
+
                 if is_empty:
                     doc.reference.delete()
                     deleted_count += 1
                     log_event("FirestoreTool", f"Deleted empty/invalid cached data for {location}, type: {data_type}")
-        
+
         if deleted_count > 0:
             log_event("FirestoreTool", f"Cleared {deleted_count} empty/invalid cached entries for {location}, type: {data_type}")
-        
+
         return True
-        
+
     except Exception as e:
         log_event("FirestoreTool", f"Error clearing empty cached data for {location}, type {data_type}: {e}")
         return False 
