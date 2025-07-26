@@ -68,7 +68,6 @@ Your task:
 
 Final Answer:
 """
-
     try:
         response = gemini.generate_content(prompt)
         return response.text.strip()
