@@ -58,35 +58,92 @@ def get_must_visit_places_nearby(location: str, max_results: int = 3) -> str:
             return f"Could not geocode location: {location}."
         lat = float(geocode[0]["geometry"]["location"]["lat"])
         lng = float(geocode[0]["geometry"]["location"]["lng"])
-        log_event("MapsTool", f"places_nearby params: location=({lat}, {lng}), radius=1000")
-        try:
-            places = gmaps.places_nearby(
-                location=(lat, lng),
-                radius=1000,
-                keyword='point of interest'
-            )
-            log_event("MapsTool", f"places_nearby raw result: {places}")
-        except Exception as e:
-            log_event("MapsTool", f"places_nearby failed for '{location}': {e}")
-            log_event("MapsTool", traceback.format_exc())
-            return f"Could not find places near {location}."
-        results = places.get("results", [])
-        results = sorted(results, key=lambda x: (x.get("rating", 0), x.get("user_ratings_total", 0)), reverse=True)
+        
+        # Try multiple search strategies with different parameters
+        search_strategies = [
+            # Strategy 1: Tourist attractions with larger radius
+            {
+                "radius": 5000,
+                "type": "tourist_attraction",
+                "keyword": None
+            },
+            # Strategy 2: Points of interest with larger radius
+            {
+                "radius": 5000,
+                "type": None,
+                "keyword": "tourist attraction"
+            },
+            # Strategy 3: General places with very large radius
+            {
+                "radius": 10000,
+                "type": None,
+                "keyword": "landmark"
+            },
+            # Strategy 4: Fallback - any place with large radius
+            {
+                "radius": 15000,
+                "type": None,
+                "keyword": None
+            }
+        ]
+        
+        results = []
+        for i, strategy in enumerate(search_strategies):
+            log_event("MapsTool", f"Search strategy {i+1}: radius={strategy['radius']}, type={strategy['type']}, keyword={strategy['keyword']}")
+            
+            try:
+                places_params = {
+                    "location": (lat, lng),
+                    "radius": strategy["radius"]
+                }
+                
+                if strategy["type"]:
+                    places_params["type"] = strategy["type"]
+                if strategy["keyword"]:
+                    places_params["keyword"] = strategy["keyword"]
+                
+                places = gmaps.places_nearby(**places_params)
+                log_event("MapsTool", f"Strategy {i+1} results: {len(places.get('results', []))} places found")
+                
+                if places.get("results"):
+                    results = places.get("results", [])
+                    break
+                    
+            except Exception as e:
+                log_event("MapsTool", f"Strategy {i+1} failed: {e}")
+                continue
+        
         if not results:
-            return f"No must-visit places found near {location}."
+            # Try a text search as last resort
+            try:
+                log_event("MapsTool", "Trying text search as fallback")
+                text_search = gmaps.places(f"tourist attractions in {location}")
+                results = text_search.get("results", [])
+                log_event("MapsTool", f"Text search results: {len(results)} places found")
+            except Exception as e:
+                log_event("MapsTool", f"Text search failed: {e}")
+        
+        if not results:
+            return f"No must-visit places found near {location}. Try searching for a more specific area or landmark."
+        
+        # Sort by rating and popularity
+        results = sorted(results, key=lambda x: (x.get("rating", 0), x.get("user_ratings_total", 0)), reverse=True)
+        
         must_visit = []
         for place in results[:max_results]:
-            name = place.get("name")
-            rating = place.get("rating")
-            address = place.get("vicinity")
+            name = place.get("name", "Unknown")
+            rating = place.get("rating", "No rating")
+            address = place.get("vicinity", "Address not available")
             must_visit.append(f"{name} (Rating: {rating}, Address: {address})")
+        
         log_event("MapsTool", f"must_visit: {must_visit}")
         return f"Must-visit places near {location}: " + "; ".join(must_visit)
+        
     except Exception as e:
         log_event("MapsTool", f"Error in get_must_visit_places_nearby: {e}")
         log_event("MapsTool", traceback.format_exc())
         log_event("MapsTool", f"Params: location='{location}'")
-        return f"Exception occurred: {e}" 
+        return f"Exception occurred: {e}"
 
 def color_location(location):
     pass

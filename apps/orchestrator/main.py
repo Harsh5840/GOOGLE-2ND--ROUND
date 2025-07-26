@@ -16,6 +16,7 @@ from google.cloud import aiplatform
 from shared.utils.logger import log_event
 from typing import Optional, List
 import json
+from datetime import datetime
 
 from agents.agent_router import agent_router
 from tools.reddit import fetch_reddit_posts
@@ -49,7 +50,8 @@ from tools.firestore import (
     get_unified_data_from_firestore,
     get_aggregated_location_data_from_firestore,
     refresh_unified_data_for_location,
-    get_unified_data_sources_for_location
+    get_unified_data_sources_for_location,
+    clear_empty_cached_data
 )
 
 # Initialize Google Cloud Vertex AI
@@ -139,10 +141,51 @@ def dispatch_tool(intent: str, entities: dict, query: str) -> tuple[bool, str]:
         
     elif intent == "get_city_news" and ("city" in entities or location):
         city = entities.get("city", location)
-        log_event("Orchestrator", f"Calling fetch_city_news with city: {city!r}")
-        reply = fetch_city_news(city=city, limit=5)
-        log_event("Orchestrator", f"fetch_city_news reply: {reply!r}")
-        return True, reply
+        
+        # Check Firestore first for cached news data
+        try:
+            from tools.firestore import get_unified_data_from_firestore
+            log_event("Orchestrator", f"Checking Firestore for cached news data for: {city}")
+            
+            # Try to get cached news data from Firestore
+            cached_data = get_unified_data_from_firestore(city, "news", 24, force_refresh=False)
+            
+            if cached_data and len(cached_data) > 0:
+                # Use cached data
+                log_event("Orchestrator", f"Using cached news data from Firestore for: {city}")
+                news_data = cached_data[0].get("data", {})
+                if "articles" in news_data:
+                    articles = news_data["articles"]
+                    if articles:
+                        reply = f"Latest news for {city}:\n" + "\n".join(articles)
+                        return True, reply
+            
+            # If no cached data, fetch from API and store in Firestore
+            log_event("Orchestrator", f"No cached data found, fetching from API for: {city}")
+            reply = fetch_city_news(city=city, limit=5)
+            
+            # Store the result in Firestore for future use
+            try:
+                from tools.firestore import store_unified_data
+                articles_list = reply.split('\n')[1:] if '\n' in reply else [reply]  # Extract articles from reply
+                store_unified_data(city, "news", {
+                    "articles": articles_list,
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "source": "news_api"
+                })
+                log_event("Orchestrator", f"Stored news data in Firestore for: {city}")
+            except Exception as e:
+                log_event("Orchestrator", f"Error storing news data in Firestore: {e}")
+            
+            log_event("Orchestrator", f"fetch_city_news reply: {reply!r}")
+            return True, reply
+            
+        except Exception as e:
+            log_event("Orchestrator", f"Error checking Firestore for news data: {e}")
+            # Fallback to direct API call
+            reply = fetch_city_news(city=city, limit=5)
+            log_event("Orchestrator", f"fetch_city_news reply: {reply!r}")
+            return True, reply
         
     elif intent == "get_firestore_reports" and location and topic:
         # TODO: Implement firestore reports tool call
@@ -161,8 +204,115 @@ def dispatch_tool(intent: str, entities: dict, query: str) -> tuple[bool, str]:
         return False, "Maps route tool not yet implemented"
         
     elif intent in ["get_must_visit_places", "poi"] and location:
-        reply = get_must_visit_places_nearby(location, max_results=10)
-        return True, reply
+        # Check Firestore first for cached data
+        try:
+            from tools.firestore import get_unified_data_from_firestore
+            log_event("Orchestrator", f"Checking Firestore for cached places data for: {location}")
+            
+            # Try to get cached maps data from Firestore
+            cached_data = get_unified_data_from_firestore(location, "maps", 24, force_refresh=False)
+            
+            if cached_data and len(cached_data) > 0:
+                # Check if cached data is actually useful (not empty)
+                places_data = cached_data[0].get("data", {})
+                if "places" in places_data and places_data["places"]:
+                    places = places_data["places"]
+                    # Check if places list is not empty and contains actual data
+                    if places and len(places) > 0 and not all(place.strip() == "" for place in places):
+                        # Additional check: make sure places don't contain error messages
+                        error_indicators = [
+                            "no must-visit places found",
+                            "no places found",
+                            "could not find",
+                            "error",
+                            "exception",
+                            "not found"
+                        ]
+                        
+                        places_text = " ".join(places).lower()
+                        has_error = any(indicator in places_text for indicator in error_indicators)
+                        
+                        if not has_error:
+                            log_event("Orchestrator", f"Using cached places data from Firestore for: {location}")
+                            reply = "Must visit places in " + location + ":\n" + "\n".join(places)
+                            return True, reply
+                        else:
+                            log_event("Orchestrator", f"Cached data contains error message, fetching fresh data for: {location}")
+                            # Clear error-containing cached data
+                            try:
+                                from tools.firestore import clear_empty_cached_data
+                                clear_empty_cached_data(location, "maps")
+                            except Exception as e:
+                                log_event("Orchestrator", f"Error clearing error-containing cached data: {e}")
+                    else:
+                        log_event("Orchestrator", f"Cached data is empty, fetching fresh data for: {location}")
+                        # Clear empty cached data
+                        try:
+                            from tools.firestore import clear_empty_cached_data
+                            clear_empty_cached_data(location, "maps")
+                        except Exception as e:
+                            log_event("Orchestrator", f"Error clearing empty cached data: {e}")
+                else:
+                    log_event("Orchestrator", f"No places data in cache, fetching fresh data for: {location}")
+            else:
+                log_event("Orchestrator", f"No cached data found, fetching from API for: {location}")
+            
+            # If no useful cached data, fetch from API and store in Firestore
+            log_event("Orchestrator", f"Fetching fresh places data from API for: {location}")
+            reply = get_must_visit_places_nearby(location, max_results=10)
+            
+            # Store the result in Firestore for future use
+            try:
+                from tools.firestore import store_unified_data
+                places_list = reply.split('\n')[1:] if '\n' in reply else [reply]  # Extract places from reply
+                store_unified_data(location, "maps", {
+                    "places": places_list,
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "source": "google_maps_api"
+                })
+                log_event("Orchestrator", f"Stored places data in Firestore for: {location}")
+            except Exception as e:
+                log_event("Orchestrator", f"Error storing places data in Firestore: {e}")
+            
+            return True, reply
+            
+        except Exception as e:
+            log_event("Orchestrator", f"Error checking Firestore for places data: {e}")
+            # Fallback to direct API call
+            reply = get_must_visit_places_nearby(location, max_results=10)
+            return True, reply
+        
+    elif intent == "history" or "query" in query.lower() and ("first" in query.lower() or "previous" in query.lower() or "last" in query.lower()):
+        # Handle query history requests
+        try:
+            from tools.firestore import get_user_query_history
+            # Extract user_id from entities or use a default for testing
+            user_id = entities.get("user_id", "test")  # Default to "test" for now
+            
+            # Get query history
+            history = get_user_query_history(user_id, limit=10)
+            
+            if not history:
+                return True, "You haven't made any queries yet. This would be your first one!"
+            
+            # Format the response based on what was asked
+            if "first" in query.lower():
+                first_query = history[-1]  # Most recent is at the end
+                return True, f"Your first query was: '{first_query['query']}' on {first_query['timestamp']}"
+            elif "last" in query.lower():
+                last_query = history[0]  # Most recent is at the beginning
+                return True, f"Your last query was: '{last_query['query']}' on {last_query['timestamp']}"
+            else:
+                # Show recent queries
+                recent_queries = history[:3]  # Show last 3 queries
+                response = "Your recent queries:\n"
+                for i, query_data in enumerate(recent_queries, 1):
+                    response += f"{i}. '{query_data['query']}' on {query_data['timestamp']}\n"
+                return True, response
+                
+        except Exception as e:
+            log_event("Orchestrator", f"Error retrieving query history: {str(e)}")
+            return True, "I'm having trouble accessing your query history right now."
         
     else:
         log_event("Orchestrator", f"No direct tool match for intent: {intent}, entities: {entities}")
@@ -177,13 +327,55 @@ async def chat_router(query: UserQuery):
     intent = intent_data["intent"]
     entities = intent_data["entities"]
     
+    # Add user_id to entities for query history and other user-specific operations
+    entities["user_id"] = query.user_id
+    
     # 2. Dispatch to appropriate tool
     success, reply = dispatch_tool(intent, entities, query.message)
     
     # 3. Handle async tool calls
     if reply == "REDDIT_ASYNC_CALL":
         subreddit = entities.get("subreddit", entities.get("topic", "").replace(' ', ''))
+        
+        # Check Firestore first for cached Reddit data
+        try:
+            from tools.firestore import get_unified_data_from_firestore
+            log_event("Orchestrator", f"Checking Firestore for cached Reddit data for: {subreddit}")
+            
+            # Try to get cached Reddit data from Firestore
+            cached_data = get_unified_data_from_firestore(subreddit, "reddit", 24, force_refresh=False)
+            
+            if cached_data and len(cached_data) > 0:
+                # Use cached data
+                log_event("Orchestrator", f"Using cached Reddit data from Firestore for: {subreddit}")
+                reddit_data = cached_data[0].get("data", {})
+                if "posts" in reddit_data:
+                    posts = reddit_data["posts"]
+                    if posts:
+                        reply = f"Latest posts from r/{subreddit}:\n" + "\n".join(posts)
+                        success = True
+                        log_event("Orchestrator", f"Using cached Reddit data: {reply!r}")
+                        return
+        except Exception as e:
+            log_event("Orchestrator", f"Error checking Firestore for Reddit data: {e}")
+        
+        # If no cached data, fetch from API and store in Firestore
+        log_event("Orchestrator", f"No cached data found, fetching from API for: {subreddit}")
         reply = await fetch_reddit_posts(subreddit=subreddit, limit=5)
+        
+        # Store the result in Firestore for future use
+        try:
+            from tools.firestore import store_unified_data
+            posts_list = reply.split('\n')[1:] if '\n' in reply else [reply]  # Extract posts from reply
+            store_unified_data(subreddit, "reddit", {
+                "posts": posts_list,
+                "timestamp": datetime.utcnow().isoformat(),
+                "source": "reddit_api"
+            })
+            log_event("Orchestrator", f"Stored Reddit data in Firestore for: {subreddit}")
+        except Exception as e:
+            log_event("Orchestrator", f"Error storing Reddit data in Firestore: {e}")
+        
         log_event("Orchestrator", f"fetch_reddit_posts reply: {reply!r}")
         success = True
     
@@ -321,7 +513,7 @@ async def add_favorite_location_endpoint(
 # Unified Data Endpoints
 @app.post("/unified-data")
 async def store_unified_data_endpoint(
-    location: str = Form(...),
+    location_name: str = Form(...),
     data_type: str = Form(...),
     data: str = Form(...),  # JSON string
     user_id: Optional[str] = Form(None)
@@ -329,7 +521,7 @@ async def store_unified_data_endpoint(
     """Store unified data"""
     try:
         data_dict = json.loads(data)
-        result = store_unified_data(location, data_type, data_dict, user_id)
+        result = store_unified_data(location_name, data_type, data_dict, user_id)
         if result["success"]:
             return result
         else:
@@ -338,98 +530,98 @@ async def store_unified_data_endpoint(
         log_event("Orchestrator", f"Error storing unified data: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/unified-data/{location}")
+@app.get("/unified-data/{location_name}")
 async def get_unified_data_endpoint(
-    location: str,
+    location_name: str,
     data_type: Optional[str] = None,
     hours: int = 24
 ):
     """Get unified data for a location"""
     try:
-        data = get_unified_data(location, data_type, hours)
+        data = get_unified_data(location_name, data_type, hours)
         return {"data": data}
     except Exception as e:
-        log_event("Orchestrator", f"Error getting unified data for {location}: {str(e)}")
+        log_event("Orchestrator", f"Error getting unified data for {location_name}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/unified-data/{location}/aggregated")
-async def get_aggregated_data_endpoint(location: str, hours: int = 24):
+@app.get("/unified-data/{location_name}/aggregated")
+async def get_aggregated_data_endpoint(location_name: str, hours: int = 24):
     """Get aggregated data for a location"""
     try:
-        aggregated = get_aggregated_location_data(location, hours)
+        aggregated = get_aggregated_location_data(location_name, hours)
         return aggregated
     except Exception as e:
-        log_event("Orchestrator", f"Error getting aggregated data for {location}: {str(e)}")
+        log_event("Orchestrator", f"Error getting aggregated data for {location_name}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Enhanced Unified Data Management Endpoints
-@app.post("/unified-data/{location}/load")
+@app.post("/unified-data/{location_name}/load")
 async def load_unified_data_endpoint(
-    location: str,
+    location_name: str,
     data_sources: str = Form("reddit,twitter,news,maps,rag")  # Comma-separated list
 ):
     """Load unified data from various sources into Firestore for a specific location"""
     try:
         sources_list = [s.strip() for s in data_sources.split(",") if s.strip()]
-        result = load_unified_data_to_firestore(location, sources_list)
+        result = load_unified_data_to_firestore(location_name, sources_list)
         if result["success"]:
             return result
         else:
             raise HTTPException(status_code=500, detail=result["error"])
     except Exception as e:
-        log_event("Orchestrator", f"Error loading unified data for {location}: {str(e)}")
+        log_event("Orchestrator", f"Error loading unified data for {location_name}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/unified-data/{location}/sources")
-async def get_unified_data_sources_endpoint(location: str):
+@app.get("/unified-data/{location_name}/sources")
+async def get_unified_data_sources_endpoint(location_name: str):
     """Get available data sources for a location from Firestore"""
     try:
-        sources = get_unified_data_sources_for_location(location)
-        return {"location": location, "sources": sources}
+        sources = get_unified_data_sources_for_location(location_name)
+        return {"location": location_name, "sources": sources}
     except Exception as e:
-        log_event("Orchestrator", f"Error getting data sources for {location}: {str(e)}")
+        log_event("Orchestrator", f"Error getting data sources for {location_name}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/unified-data/{location}/refresh")
+@app.post("/unified-data/{location_name}/refresh")
 async def refresh_unified_data_endpoint(
-    location: str,
+    location_name: str,
     data_sources: str = Form("reddit,twitter,news,maps,rag")  # Comma-separated list
 ):
     """Force refresh unified data for a specific location"""
     try:
         sources_list = [s.strip() for s in data_sources.split(",") if s.strip()]
-        result = refresh_unified_data_for_location(location, sources_list)
+        result = refresh_unified_data_for_location(location_name, sources_list)
         if result["success"]:
             return result
         else:
             raise HTTPException(status_code=500, detail=result["error"])
     except Exception as e:
-        log_event("Orchestrator", f"Error refreshing unified data for {location}: {str(e)}")
+        log_event("Orchestrator", f"Error refreshing unified data for {location_name}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/unified-data/{location}/firestore")
+@app.get("/unified-data/{location_name}/firestore")
 async def get_unified_data_firestore_endpoint(
-    location: str,
+    location_name: str,
     data_type: Optional[str] = None,
     hours: int = 24,
     force_refresh: bool = False
 ):
     """Get unified data directly from Firestore with optional refresh"""
     try:
-        data = get_unified_data_from_firestore(location, data_type, hours, force_refresh)
-        return {"location": location, "data": data, "count": len(data)}
+        data = get_unified_data_from_firestore(location_name, data_type, hours, force_refresh)
+        return {"location": location_name, "data": data, "count": len(data)}
     except Exception as e:
-        log_event("Orchestrator", f"Error getting unified data from Firestore for {location}: {str(e)}")
+        log_event("Orchestrator", f"Error getting unified data from Firestore for {location_name}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/unified-data/{location}/aggregated/firestore")
-async def get_aggregated_data_firestore_endpoint(location: str, hours: int = 24):
+@app.get("/unified-data/{location_name}/aggregated/firestore")
+async def get_aggregated_data_firestore_endpoint(location_name: str, hours: int = 24):
     """Get aggregated data directly from Firestore"""
     try:
-        aggregated = get_aggregated_location_data_from_firestore(location, hours)
+        aggregated = get_aggregated_location_data_from_firestore(location_name, hours)
         return aggregated
     except Exception as e:
-        log_event("Orchestrator", f"Error getting aggregated data from Firestore for {location}: {str(e)}")
+        log_event("Orchestrator", f"Error getting aggregated data from Firestore for {location_name}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Event Photos Endpoints
@@ -574,6 +766,17 @@ async def get_user_retention_analytics_endpoint(user_id: str):
             raise HTTPException(status_code=500, detail=result["error"])
     except Exception as e:
         log_event("Orchestrator", f"Error getting retention analytics for {user_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/user/{user_id}/query-history")
+async def get_user_query_history_endpoint(user_id: str, limit: int = 20):
+    """Get user's query history"""
+    try:
+        from tools.firestore import get_user_query_history
+        history = get_user_query_history(user_id, limit)
+        return {"user_id": user_id, "query_history": history, "count": len(history)}
+    except Exception as e:
+        log_event("Orchestrator", f"Error getting query history for {user_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/location_mood")

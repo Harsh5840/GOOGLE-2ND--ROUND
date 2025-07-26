@@ -1,5 +1,6 @@
 import os
 from google.cloud import firestore
+from google.oauth2 import service_account
 from dotenv import load_dotenv
 from shared.utils.logger import log_event
 from datetime import datetime, timedelta
@@ -9,7 +10,37 @@ import json
 
 load_dotenv()
 
-db = firestore.Client()
+def initialize_firestore():
+    """Initialize Firestore with proper authentication"""
+    try:
+        # Option 1: Use environment variable for JSON file path
+        service_account_path = os.getenv('FIREBASE_SERVICE_ACCOUNT_PATH')
+        if service_account_path and os.path.exists(service_account_path):
+            log_event("FirestoreTool", f"Using service account file: {service_account_path}")
+            credentials = service_account.Credentials.from_service_account_file(service_account_path)
+            return firestore.Client(credentials=credentials)
+        
+        # Option 2: Use direct JSON content
+        service_account_json = os.getenv('FIREBASE_SERVICE_ACCOUNT_JSON')
+        if service_account_json:
+            log_event("FirestoreTool", "Using service account JSON from environment variable")
+            credentials = service_account.Credentials.from_service_account_info(json.loads(service_account_json))
+            return firestore.Client(credentials=credentials)
+        
+        # Option 3: Use default credentials (GOOGLE_APPLICATION_CREDENTIALS)
+        log_event("FirestoreTool", "Using default credentials (GOOGLE_APPLICATION_CREDENTIALS)")
+        return firestore.Client()
+        
+    except Exception as e:
+        log_event("FirestoreTool", f"Error initializing Firestore: {e}")
+        return None
+
+# Initialize Firestore client
+db = initialize_firestore()
+
+if db is None:
+    log_event("FirestoreTool", "WARNING: Firestore client initialization failed. Some features may not work.")
+
 COLLECTION_NAME = os.getenv("FIREBASE_COLLECTION_NAME", "city_reports")
 USER_HISTORY_COLLECTION = "user_query_history"
 USER_PROFILES_COLLECTION = "user_profiles"
@@ -512,39 +543,35 @@ def get_unified_data_from_firestore(location: str, data_type: Optional[str] = No
         if force_refresh:
             load_unified_data_to_firestore(location)
         
-        # Get data from Firestore
+        # Get data from Firestore using simple queries to avoid composite index requirements
         cutoff_time = datetime.utcnow() - timedelta(hours=hours)
         
-        if data_type:
-            # Get specific data type
-            data_ref = (
-                db.collection(UNIFIED_DATA_COLLECTION)
-                  .where("location", "==", location)
-                  .where("data_type", "==", data_type)
-                  .where("timestamp", ">=", cutoff_time.isoformat())
-                  .order_by("timestamp", direction=firestore.Query.DESCENDING)
-            )
-        else:
-            # Get all data types
-            data_ref = (
-                db.collection(UNIFIED_DATA_COLLECTION)
-                  .where("location", "==", location)
-                  .where("timestamp", ">=", cutoff_time.isoformat())
-                  .order_by("timestamp", direction=firestore.Query.DESCENDING)
-            )
+        # Get all documents for the location and filter in memory
+        data_ref = db.collection(UNIFIED_DATA_COLLECTION).where("location", "==", location)
         
         docs = data_ref.stream()
-        data = [doc.to_dict() for doc in docs]
+        all_data = [doc.to_dict() for doc in docs]
+        
+        # Filter by timestamp and data_type in memory
+        filtered_data = []
+        for doc in all_data:
+            doc_timestamp = datetime.fromisoformat(doc.get("timestamp", "1970-01-01T00:00:00"))
+            if doc_timestamp >= cutoff_time:
+                if data_type is None or doc.get("data_type") == data_type:
+                    filtered_data.append(doc)
+        
+        # Sort by timestamp (most recent first)
+        filtered_data.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
         
         # If no recent data and not forcing refresh, try to load fresh data
-        if not data and not force_refresh:
+        if not filtered_data and not force_refresh:
             log_event("FirestoreTool", f"No recent data found for {location}, loading fresh data")
             load_result = load_unified_data_to_firestore(location)
             if load_result["success"]:
                 # Try to get the data again
                 return get_unified_data_from_firestore(location, data_type, hours, force_refresh=False)
         
-        return data
+        return filtered_data
         
     except Exception as e:
         log_event("FirestoreTool", f"Error getting unified data from Firestore for {location}: {e}")
@@ -751,15 +778,17 @@ def store_user_query_history(user_id: str, query: str, response_data: dict,
 def get_user_query_history(user_id: str, limit: int = 20) -> List[Dict[str, Any]]:
     """Get user's query history"""
     try:
-        history_ref = (
-            db.collection(USER_HISTORY_COLLECTION)
-              .where("user_id", "==", user_id)
-              .order_by("timestamp", direction=firestore.Query.DESCENDING)
-              .limit(limit)
-        )
+        # Get all documents for the user and sort in memory to avoid composite index requirement
+        history_ref = db.collection(USER_HISTORY_COLLECTION).where("user_id", "==", user_id)
         
         docs = history_ref.stream()
-        return [doc.to_dict() for doc in docs]
+        history = [doc.to_dict() for doc in docs]
+        
+        # Sort by timestamp in descending order (most recent first)
+        history.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+        
+        # Return limited results
+        return history[:limit]
         
     except Exception as e:
         log_event("FirestoreTool", f"Error getting user query history for {user_id}: {e}")
@@ -803,3 +832,70 @@ def fetch_similar_user_queries(user_id: str, query: str, limit: int = 5) -> str:
     except Exception as e:
         log_event("FirestoreTool", f"Error fetching similar user queries: {e}")
         return f"Error fetching similar user queries: {e}" 
+
+def clear_empty_cached_data(location: str, data_type: str) -> bool:
+    """Clear empty or invalid cached data from Firestore"""
+    try:
+        # Get all data for the location and type
+        data_ref = db.collection(UNIFIED_DATA_COLLECTION).where("location", "==", location)
+        docs = data_ref.stream()
+        
+        deleted_count = 0
+        for doc in docs:
+            doc_data = doc.to_dict()
+            if doc_data.get("data_type") == data_type:
+                # Check if data is empty or invalid
+                data_content = doc_data.get("data", {})
+                is_empty = False
+                
+                if data_type == "maps":
+                    places = data_content.get("places", [])
+                    # Check for empty places
+                    is_empty = not places or len(places) == 0 or all(place.strip() == "" for place in places)
+                    
+                    # Check for error messages in places
+                    if not is_empty and places:
+                        error_indicators = [
+                            "no must-visit places found",
+                            "no places found",
+                            "could not find",
+                            "error",
+                            "exception",
+                            "not found"
+                        ]
+                        places_text = " ".join(places).lower()
+                        is_empty = any(indicator in places_text for indicator in error_indicators)
+                        
+                elif data_type == "news":
+                    articles = data_content.get("articles", [])
+                    is_empty = not articles or len(articles) == 0
+                    
+                    # Check for error messages in articles
+                    if not is_empty and articles:
+                        error_indicators = ["error", "exception", "not found", "no articles found"]
+                        articles_text = " ".join(articles).lower()
+                        is_empty = any(indicator in articles_text for indicator in error_indicators)
+                        
+                elif data_type == "reddit":
+                    posts = data_content.get("posts", [])
+                    is_empty = not posts or len(posts) == 0
+                    
+                    # Check for error messages in posts
+                    if not is_empty and posts:
+                        error_indicators = ["error", "exception", "not found", "no posts found"]
+                        posts_text = " ".join(posts).lower()
+                        is_empty = any(indicator in posts_text for indicator in error_indicators)
+                
+                if is_empty:
+                    doc.reference.delete()
+                    deleted_count += 1
+                    log_event("FirestoreTool", f"Deleted empty/invalid cached data for {location}, type: {data_type}")
+        
+        if deleted_count > 0:
+            log_event("FirestoreTool", f"Cleared {deleted_count} empty/invalid cached entries for {location}, type: {data_type}")
+        
+        return True
+        
+    except Exception as e:
+        log_event("FirestoreTool", f"Error clearing empty cached data for {location}, type {data_type}: {e}")
+        return False 

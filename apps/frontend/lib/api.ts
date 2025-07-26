@@ -272,46 +272,65 @@ export async function getLocationEventPhotos(
 
 // User Data Retention API
 export async function exportUserData(userId: string): Promise<any> {
-  try {
-    const response = await axios.post(`${API_BASE_URL}/user/export`, { user_id: userId });
-    return response.data;
-  } catch (error: any) {
-    console.error('Error exporting user data:', error);
-    throw error;
+  const formData = new FormData();
+  formData.append('user_id', userId);
+  
+  const response = await fetch(`${API_BASE_URL}/user/export`, {
+    method: 'POST',
+    body: formData,
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to export user data: ${response.statusText}`);
   }
+  
+  return response.json();
 }
 
 export async function getUserDataExports(userId: string): Promise<any> {
-  try {
-    const response = await axios.get(`${API_BASE_URL}/user/${userId}/exports`);
-    return response.data;
-  } catch (error: any) {
-    console.error('Error fetching user data exports:', error);
-    throw error;
+  const response = await fetch(`${API_BASE_URL}/user/${userId}/exports`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to get user data exports: ${response.statusText}`);
   }
+  
+  return response.json();
 }
 
 export async function restoreUserData(userId: string, backupData: any): Promise<any> {
-  try {
-    const formData = new FormData();
-    formData.append('backup_data', JSON.stringify(backupData));
-    
-    const response = await axios.post(`${API_BASE_URL}/user/${userId}/restore`, formData);
-    return response.data;
-  } catch (error: any) {
-    console.error('Error restoring user data:', error);
-    throw error;
+  const formData = new FormData();
+  formData.append('backup_data', JSON.stringify(backupData));
+  
+  const response = await fetch(`${API_BASE_URL}/user/${userId}/restore`, {
+    method: 'POST',
+    body: formData,
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to restore user data: ${response.statusText}`);
   }
+  
+  return response.json();
 }
 
 export async function getUserRetentionAnalytics(userId: string): Promise<any> {
-  try {
-    const response = await axios.get(`${API_BASE_URL}/user/${userId}/retention-analytics`);
-    return response.data;
-  } catch (error: any) {
-    console.error('Error fetching user retention analytics:', error);
-    throw error;
+  const response = await fetch(`${API_BASE_URL}/user/${userId}/retention-analytics`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to get retention analytics: ${response.statusText}`);
   }
+  
+  return response.json();
+}
+
+export async function getUserQueryHistory(userId: string, limit: number = 20): Promise<any> {
+  const response = await fetch(`${API_BASE_URL}/user/${userId}/query-history?limit=${limit}`);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to get query history: ${response.statusText}`);
+  }
+  
+  return response.json();
 }
 
 // Enhanced Unified Data Management API
