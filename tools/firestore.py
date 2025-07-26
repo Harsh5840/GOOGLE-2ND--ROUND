@@ -475,7 +475,27 @@ def load_unified_data_to_firestore(location: str, data_sources: List[str] = None
         if 'reddit' in data_sources:
             try:
                 from tools.reddit import fetch_reddit_posts
-                reddit_data = fetch_reddit_posts(location=location, topic="city events", limit=10)
+                import asyncio
+                
+                # Use location as subreddit name, normalize it for Reddit
+                subreddit_name = location.lower().replace(' ', '')
+                if subreddit_name in ["bengaluru", "bangalore"]:
+                    subreddit_name = "bangalore"
+                elif subreddit_name in ["newyork", "newyorkcity"]:
+                    subreddit_name = "nyc"
+                elif subreddit_name in ["london"]:
+                    subreddit_name = "london"
+                else:
+                    subreddit_name = "news"  # fallback to general news
+                
+                # Handle async call properly
+                try:
+                    reddit_data = asyncio.run(fetch_reddit_posts(subreddit=subreddit_name, limit=10))
+                except RuntimeError:
+                    # If there's already an event loop running, use a different approach
+                    loop = asyncio.get_event_loop()
+                    reddit_data = loop.run_until_complete(fetch_reddit_posts(subreddit=subreddit_name, limit=10))
+                
                 if reddit_data:
                     store_unified_data(location, "reddit", {
                         "data": reddit_data,
@@ -580,11 +600,17 @@ def load_unified_data_to_firestore(location: str, data_sources: List[str] = None
         return {"success": False, "error": str(e)}
 
 def get_unified_data_from_firestore(location: str, data_type: Optional[str] = None,
-                                   hours: int = 24, force_refresh: bool = False) -> List[Dict[str, Any]]:
+                                   hours: int = 24, force_refresh: bool = False, 
+                                   _recursion_depth: int = 0) -> List[Dict[str, Any]]:
     """
     Get unified data from Firestore. If force_refresh is True or data is stale,
     it will reload data from sources first.
     """
+    # Prevent infinite recursion
+    if _recursion_depth > 1:
+        log_event("FirestoreTool", f"Preventing infinite recursion for {location}, returning empty data")
+        return []
+    
     try:
         # Check if we need to refresh data
         if force_refresh:
@@ -610,13 +636,13 @@ def get_unified_data_from_firestore(location: str, data_type: Optional[str] = No
         # Sort by timestamp (most recent first)
         filtered_data.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
 
-        # If no recent data and not forcing refresh, try to load fresh data
-        if not filtered_data and not force_refresh:
+        # If no recent data and not forcing refresh, try to load fresh data (but only once)
+        if not filtered_data and not force_refresh and _recursion_depth == 0:
             log_event("FirestoreTool", f"No recent data found for {location}, loading fresh data")
             load_result = load_unified_data_to_firestore(location)
             if load_result["success"]:
-                # Try to get the data again
-                return get_unified_data_from_firestore(location, data_type, hours, force_refresh=False)
+                # Try to get the data again, but increment recursion depth
+                return get_unified_data_from_firestore(location, data_type, hours, force_refresh=False, _recursion_depth=_recursion_depth + 1)
 
         return filtered_data
 

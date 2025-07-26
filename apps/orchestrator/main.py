@@ -77,6 +77,7 @@ class BotResponse(BaseModel):
     intent: str
     entities: dict
     reply: str
+    location_data: Optional[dict] = None  # For location display data
 
 # Event Photo schemas
 class EventPhotoResponse(BaseModel):
@@ -119,250 +120,158 @@ class UnifiedDataResponse(BaseModel):
     timestamp: str
     processed: bool
 
-def dispatch_tool(intent: str, entities: dict, query: str) -> tuple[bool, str]:
+def dispatch_tool(intent: str, entities: dict, query: str) -> tuple[bool, str, Optional[dict]]:
     """
-    Dispatch to the appropriate tool based on intent and entities.
-    Returns (success: bool, reply: str)
+    Dispatch to appropriate tool based on intent and entities.
+    Returns (success, reply, response_data).
     """
-    location = entities.get("location", "")
-    topic = entities.get("topic", "")
+    location = entities.get("location")
     
-    if intent == "get_twitter_posts" and location and topic:
-        log_event("Orchestrator", f"Calling fetch_twitter_posts with location: {location!r}, topic: {topic!r}")
-        reply = fetch_twitter_posts(location=location, topic=topic, limit=10)
-        log_event("Orchestrator", f"fetch_twitter_posts reply: {reply!r}")
-        return True, reply
-        
-    elif intent == "get_reddit_posts" and "subreddit" in entities:
-        log_event("Orchestrator", f"Calling fetch_reddit_posts with subreddit: {entities.get('subreddit')!r}, topic: {entities.get('topic')!r}")
-        # Note: This will be awaited in the calling function
-        return True, "REDDIT_ASYNC_CALL"
-        
-    elif intent == "social_media" and entities.get("source", "").lower() == "reddit" and "topic" in entities:
-        log_event("Orchestrator", f"Calling fetch_reddit_posts (social_media intent) with subreddit: {entities.get('topic')!r}")
-        # Note: This will be awaited in the calling function
-        return True, "REDDIT_ASYNC_CALL"
-        
-    elif intent == "get_city_news" and ("city" in entities or location):
-        city = entities.get("city", location)
-        
-        # Check Firestore first for cached news data
-        try:
-            from tools.firestore import get_unified_data_from_firestore
-            log_event("Orchestrator", f"Checking Firestore for cached news data for: {city}")
-            
-            # Try to get cached news data from Firestore
-            cached_data = get_unified_data_from_firestore(city, "news", 24, force_refresh=False)
-            
-            if cached_data and len(cached_data) > 0:
-                # Use cached data
-                log_event("Orchestrator", f"Using cached news data from Firestore for: {city}")
-                news_data = cached_data[0].get("data", {})
-                if "articles" in news_data:
-                    articles = news_data["articles"]
-                    if articles:
-                        reply = f"Latest news for {city}:\n" + "\n".join(articles)
-                        return True, reply
-            
-            # If no cached data, fetch from API and store in Firestore
-            log_event("Orchestrator", f"No cached data found, fetching from API for: {city}")
-            reply = fetch_city_news(city=city, limit=5)
-            
-            # Store the result in Firestore for future use
-            try:
-                from tools.firestore import store_unified_data
-                articles_list = reply.split('\n')[1:] if '\n' in reply else [reply]  # Extract articles from reply
-                store_unified_data(city, "news", {
-                    "articles": articles_list,
-                    "timestamp": datetime.utcnow().isoformat(),
-                    "source": "news_api"
-                })
-                log_event("Orchestrator", f"Stored news data in Firestore for: {city}")
-            except Exception as e:
-                log_event("Orchestrator", f"Error storing news data in Firestore: {e}")
-            
-            log_event("Orchestrator", f"fetch_city_news reply: {reply!r}")
-            return True, reply
-            
-        except Exception as e:
-            log_event("Orchestrator", f"Error checking Firestore for news data: {e}")
-            # Fallback to direct API call
-            reply = fetch_city_news(city=city, limit=5)
-            log_event("Orchestrator", f"fetch_city_news reply: {reply!r}")
-            return True, reply
-        
-    elif intent == "get_firestore_reports" and location and topic:
-        # Implement firestore reports tool call
-        try:
-            from tools.firestore import fetch_firestore_reports
-            log_event("Orchestrator", f"Calling fetch_firestore_reports with location: {location!r}, topic: {topic!r}")
-            reply = fetch_firestore_reports(location=location, topic=topic, limit=5)
-            log_event("Orchestrator", f"fetch_firestore_reports reply: {reply!r}")
-            return True, reply
-        except Exception as e:
-            log_event("Orchestrator", f"Error in fetch_firestore_reports: {e}")
-            return False, f"Error fetching Firestore reports: {e}"
-        
-    elif intent == "get_similar_queries" and "user_id" in entities and "query" in entities:
-        # Implement firestore similar tool call
-        try:
-            from tools.firestore import fetch_similar_user_queries
-            user_id = entities.get("user_id")
-            query = entities.get("query")
-            log_event("Orchestrator", f"Calling fetch_similar_user_queries with user_id: {user_id!r}, query: {query!r}")
-            reply = fetch_similar_user_queries(user_id=user_id, query=query, limit=5)
-            log_event("Orchestrator", f"fetch_similar_user_queries reply: {reply!r}")
-            return True, reply
-        except Exception as e:
-            log_event("Orchestrator", f"Error in fetch_similar_user_queries: {e}")
-            return False, f"Error fetching similar queries: {e}"
-        
-    elif intent == "google_search" and "query" in entities:
+    if intent == "google_search" and "query" in entities:
         # Implement google search tool call
         try:
-            from tools.google_search import google_search
+            from tools.google_search import google_search # Corrected from search_google
             query = entities.get("query")
             log_event("Orchestrator", f"Calling google_search with query: {query!r}")
-            results = google_search(query=query, num_results=5)
+            results = google_search(query=query, num_results=5) # Corrected function call
             if results:
                 reply = f"Google search results for '{query}':\n" + "\n".join([f"- {r.get('title', 'No title')}: {r.get('snippet', 'No snippet')}" for r in results])
             else:
                 reply = f"No results found for '{query}'"
             log_event("Orchestrator", f"google_search reply: {reply[:100]}...")
-            return True, reply
+            return True, reply, None
         except Exception as e:
             log_event("Orchestrator", f"Error in google_search: {e}")
-            return False, f"Error performing Google search: {e}"
+            return False, f"Error performing Google search: {e}", None
         
-    elif intent == "get_best_route" and "current_location" in entities and "destination" in entities:
-        # Implement maps route tool call
+    elif intent == "best_route" and "origin" in entities and "destination" in entities:
+        # Implement best route tool call
         try:
-            from tools.maps import get_best_route
-            current_location = entities.get("current_location")
+            from tools.maps import get_best_route, display_locations_on_map
+            origin = entities.get("origin")
             destination = entities.get("destination")
             mode = entities.get("mode", "driving")
-            log_event("Orchestrator", f"Calling get_best_route with current_location: {current_location!r}, destination: {destination!r}")
-            reply = get_best_route(current_location=current_location, destination=destination, mode=mode)
-            log_event("Orchestrator", f"get_best_route reply: {reply!r}")
-            return True, reply
-        except Exception as e:
-            log_event("Orchestrator", f"Error in get_best_route: {e}")
-            return False, f"Error getting route: {e}"
-        
-    elif intent in ["get_must_visit_places", "poi"] and location:
-        # Check Firestore first for cached data
-        try:
-            from tools.firestore import get_unified_data_from_firestore
-            log_event("Orchestrator", f"Checking Firestore for cached places data for: {location}")
             
-            # Try to get cached maps data from Firestore
-            cached_data = get_unified_data_from_firestore(location, "maps", 24, force_refresh=False)
+            log_event("Orchestrator", f"Calling get_best_route with origin: {origin}, destination: {destination}, mode: {mode}")
             
-            if cached_data and len(cached_data) > 0:
-                # Check if cached data is actually useful (not empty)
-                places_data = cached_data[0].get("data", {})
-                if "places" in places_data and places_data["places"]:
-                    places = places_data["places"]
-                    # Check if places list is not empty and contains actual data
-                    if places and len(places) > 0 and not all(place.strip() == "" for place in places):
-                        # Additional check: make sure places don't contain error messages
-                        error_indicators = [
-                            "no must-visit places found",
-                            "no places found",
-                            "could not find",
-                            "error",
-                            "exception",
-                            "not found"
-                        ]
-                        
-                        places_text = " ".join(places).lower()
-                        has_error = any(indicator in places_text for indicator in error_indicators)
-                        
-                        if not has_error:
-                            log_event("Orchestrator", f"Using cached places data from Firestore for: {location}")
-                            reply = "Must visit places in " + location + ":\n" + "\n".join(places)
-                            return True, reply
-                        else:
-                            log_event("Orchestrator", f"Cached data contains error message, fetching fresh data for: {location}")
-                            # Clear error-containing cached data
-                            try:
-                                from tools.firestore import clear_empty_cached_data
-                                clear_empty_cached_data(location, "maps")
-                            except Exception as e:
-                                log_event("Orchestrator", f"Error clearing error-containing cached data: {e}")
-                    else:
-                        log_event("Orchestrator", f"Cached data is empty, fetching fresh data for: {location}")
-                        # Clear empty cached data
-                        try:
-                            from tools.firestore import clear_empty_cached_data
-                            clear_empty_cached_data(location, "maps")
-                        except Exception as e:
-                            log_event("Orchestrator", f"Error clearing empty cached data: {e}")
-                else:
-                    log_event("Orchestrator", f"No places data in cache, fetching fresh data for: {location}")
+            result = get_best_route(origin, destination, mode)
+            
+            if result["success"]:
+                # Format locations for frontend display
+                display_result = display_locations_on_map(result["locations_to_display"])
+                
+                reply = result["route_info"]
+                if result["mood_data"]:
+                    origin_mood = result["mood_data"]["origin"]["mood_label"]
+                    dest_mood = result["mood_data"]["destination"]["mood_label"]
+                    reply += f"\n\nMood Analysis:\nOrigin ({origin}): {origin_mood}\nDestination ({destination}): {dest_mood}"
+                
+                # Add location display data to response
+                response_data = {
+                    "route_info": result["route_info"],
+                    "mood_data": result["mood_data"],
+                    "locations_to_display": display_result["locations"],
+                    "route_details": result["route_details"]
+                }
+                
+                log_event("Orchestrator", f"get_best_route reply: {reply[:100]}...")
+                return True, reply, response_data
             else:
-                log_event("Orchestrator", f"No cached data found, fetching from API for: {location}")
-            
-            # If no useful cached data, fetch from API and store in Firestore
-            log_event("Orchestrator", f"Fetching fresh places data from API for: {location}")
-            reply = get_must_visit_places_nearby(location, max_results=10)
-            
-            # Store the result in Firestore for future use
-            try:
-                from tools.firestore import store_unified_data
-                places_list = reply.split('\n')[1:] if '\n' in reply else [reply]  # Extract places from reply
-                store_unified_data(location, "maps", {
-                    "places": places_list,
-                    "timestamp": datetime.utcnow().isoformat(),
-                    "source": "google_maps_api"
-                })
-                log_event("Orchestrator", f"Stored places data in Firestore for: {location}")
-            except Exception as e:
-                log_event("Orchestrator", f"Error storing places data in Firestore: {e}")
-            
-            return True, reply
-            
-        except Exception as e:
-            log_event("Orchestrator", f"Error checking Firestore for places data: {e}")
-            # Fallback to direct API call
-            reply = get_must_visit_places_nearby(location, max_results=10)
-            return True, reply
-        
-    elif intent == "history" or "query" in query.lower() and ("first" in query.lower() or "previous" in query.lower() or "last" in query.lower()):
-        # Handle query history requests
-        try:
-            from tools.firestore import get_user_query_history
-            # Extract user_id from entities or use a default for testing
-            user_id = entities.get("user_id", "test")  # Default to "test" for now
-            
-            # Get query history
-            history = get_user_query_history(user_id, limit=10)
-            
-            if not history:
-                return True, "You haven't made any queries yet. This would be your first one!"
-            
-            # Format the response based on what was asked
-            if "first" in query.lower():
-                first_query = history[-1]  # Most recent is at the end
-                return True, f"Your first query was: '{first_query['query']}' on {first_query['timestamp']}"
-            elif "last" in query.lower():
-                last_query = history[0]  # Most recent is at the beginning
-                return True, f"Your last query was: '{last_query['query']}' on {last_query['timestamp']}"
-            else:
-                # Show recent queries
-                recent_queries = history[:3]  # Show last 3 queries
-                response = "Your recent queries:\n"
-                for i, query_data in enumerate(recent_queries, 1):
-                    response += f"{i}. '{query_data['query']}' on {query_data['timestamp']}\n"
-                return True, response
+                reply = f"Error finding route: {result['error']}"
+                log_event("Orchestrator", f"get_best_route error: {reply}")
+                return False, reply, None
                 
         except Exception as e:
-            log_event("Orchestrator", f"Error retrieving query history: {str(e)}")
-            return True, "I'm having trouble accessing your query history right now."
+            log_event("Orchestrator", f"Error in get_best_route: {e}")
+            return False, f"Error finding route: {e}", None
         
-    else:
-        log_event("Orchestrator", f"No direct tool match for intent: {intent}, entities: {entities}")
-        return False, ""
+    elif intent == "poi" and "location" in entities:
+        # Implement must visit places tool call
+        try:
+            from tools.maps import get_must_visit_places_nearby, display_locations_on_map
+            location = entities.get("location")
+            max_results = entities.get("max_results", 3)
+            
+            log_event("Orchestrator", f"Calling get_must_visit_places_nearby with location: {location}, max_results: {max_results}")
+            
+            result = get_must_visit_places_nearby(location, max_results)
+            
+            if result["success"]:
+                # Format locations for frontend display
+                display_result = display_locations_on_map(result["locations_to_display"])
+                
+                reply = result["summary"]
+                if result["mood_data"]:
+                    mood_label = result["mood_data"]["mood_label"]
+                    mood_score = result["mood_data"]["mood_score"]
+                    reply += f"\n\nLocation Mood: {mood_label} (Score: {mood_score})"
+                
+                # Add location display data to response
+                response_data = {
+                    "places": result["places"],
+                    "mood_data": result["mood_data"],
+                    "locations_to_display": display_result["locations"],
+                    "summary": result["summary"]
+                }
+                
+                log_event("Orchestrator", f"get_must_visit_places_nearby reply: {reply[:100]}...")
+                return True, reply, response_data
+            else:
+                reply = f"Error finding must-visit places: {result['error']}"
+                log_event("Orchestrator", f"get_must_visit_places_nearby error: {reply}")
+                return False, reply, None
+                
+        except Exception as e:
+            log_event("Orchestrator", f"Error in get_must_visit_places_nearby: {e}")
+            return False, f"Error finding must-visit places: {e}", None
+        
+    elif intent == "history" or "query" in query.lower() and ("first" in query.lower() or "previous" in query.lower() or "last" in query.lower()):
+        # Handle user queries related to history
+        try:
+            from tools.firestore import get_user_query_history
+            # Extract user_id from entities or use a default
+            user_id = entities.get("user_id", "default_user")
+            history = get_user_query_history(user_id, limit=5)
+            
+            if history:
+                reply = "Your recent queries:\n" + "\n".join([
+                    f"- {entry.get('query', 'Unknown query')} ({entry.get('timestamp', 'Unknown time')})"
+                    for entry in history
+                ])
+            else:
+                reply = "No query history found."
+            
+            return True, reply, None
+        except Exception as e:
+            log_event("Orchestrator", f"Error getting query history: {e}")
+            return False, f"Error retrieving query history: {e}", None
+    
+    # Add more tool calls as needed
+    elif intent == "fetch_firestore_reports":
+        # Implement fetch_firestore_reports tool call
+        try:
+            from tools.firestore import fetch_firestore_reports
+            location = entities.get("location", "")
+            topic = entities.get("topic", "")
+            reply = fetch_firestore_reports(location, topic)
+            return True, reply, None
+        except Exception as e:
+            log_event("Orchestrator", f"Error in fetch_firestore_reports: {e}")
+            return False, f"Error fetching reports: {e}", None
+    
+    elif intent == "fetch_similar_user_queries":
+        # Implement fetch_similar_user_queries tool call
+        try:
+            from tools.firestore import fetch_similar_user_queries
+            user_id = entities.get("user_id", "")
+            query = entities.get("query", "")
+            reply = fetch_similar_user_queries(user_id, query)
+            return True, reply, None
+        except Exception as e:
+            log_event("Orchestrator", f"Error in fetch_similar_user_queries: {e}")
+            return False, f"Error fetching similar queries: {e}", None
+    
+    return False, "", None
 
 @app.post("/chat", response_model=BotResponse)
 async def chat_router(query: UserQuery):
@@ -377,7 +286,7 @@ async def chat_router(query: UserQuery):
     entities["user_id"] = query.user_id
     
     # 2. Dispatch to appropriate tool
-    success, reply = dispatch_tool(intent, entities, query.message)
+    success, reply, response_data = dispatch_tool(intent, entities, query.message)
     
     # 3. Handle async tool calls
     if reply == "REDDIT_ASYNC_CALL":
@@ -401,7 +310,7 @@ async def chat_router(query: UserQuery):
                         reply = f"Latest posts from r/{subreddit}:\n" + "\n".join(posts)
                         success = True
                         log_event("Orchestrator", f"Using cached Reddit data: {reply!r}")
-                        return
+                        return BotResponse(intent=intent, entities=entities, reply=reply, location_data=response_data)
         except Exception as e:
             log_event("Orchestrator", f"Error checking Firestore for Reddit data: {e}")
         
@@ -455,7 +364,7 @@ async def chat_router(query: UserQuery):
     except Exception as e:
         log_event("Orchestrator", f"Error storing query history: {str(e)}")
 
-    return BotResponse(intent=intent, entities=entities, reply=reply)
+    return BotResponse(intent=intent, entities=entities, reply=reply, location_data=response_data)
 
 # User Profile Management Endpoints
 @app.post("/user/profile", response_model=UserProfileResponse)
@@ -853,34 +762,111 @@ async def location_mood(
     Aggregate mood for a location at a given time using the unified aggregator response.
     Returns a mood label, score, detected events, must-visit places, user photos, and source breakdown for frontend use.
     """
-    unified_data = aggregate_api_results(
-        reddit_data=[],
-        twitter_data=[],
-        news_data=[],
-        maps_data=[],
-        rag_data=[],
-        google_search_data=[],
-    )
-    mood_result = aggregate_mood(unified_data)
-    must_visit_places = get_must_visit_places_nearby(location, max_results=3)
-    # Geocode location for lat/lng
     try:
-        import googlemaps
-        gmaps = googlemaps.Client(key=os.getenv("GOOGLE_MAPS_API_KEY"))
-        geocode = gmaps.geocode(location)
-        latlng = geocode[0]["geometry"]["location"] if geocode else {"lat": None, "lng": None}
-    except Exception:
-        latlng = {"lat": None, "lng": None}
-    user_photos = []
-    if latlng["lat"] is not None and latlng["lng"] is not None:
-        user_photos = fetch_user_photos_nearby(latlng["lat"], latlng["lng"], radius_m=500)
-    return {
-        "location": location,
-        "datetime": datetime_str,
-        **mood_result,
-        "must_visit_places": must_visit_places,
-        "user_photos": user_photos
-    }
+        # Get mood data using the new maps functionality
+        from tools.maps import get_location_mood_data, get_must_visit_places_nearby, display_locations_on_map
+        
+        # Get mood data for the location
+        mood_result = get_location_mood_data(location)
+        
+        # Get must-visit places with mood integration
+        places_result = get_must_visit_places_nearby(location, max_results=3)
+        
+        # Prepare response data
+        response_data = {
+            "location": location,
+            "datetime": datetime_str,
+            **mood_result
+        }
+        
+        # Add must-visit places if available
+        if places_result["success"]:
+            response_data["must_visit_places"] = places_result["places"]
+            response_data["locations_to_display"] = places_result["locations_to_display"]
+        else:
+            response_data["must_visit_places"] = []
+            response_data["locations_to_display"] = []
+        
+        # Get user photos near the location
+        try:
+            from tools.firestore import get_location_event_photos
+            # Geocode location for lat/lng
+            import googlemaps
+            gmaps = googlemaps.Client(key=os.getenv("GOOGLE_MAPS_API_KEY"))
+            geocode = gmaps.geocode(location)
+            latlng = geocode[0]["geometry"]["location"] if geocode else {"lat": None, "lng": None}
+            
+            user_photos = []
+            if latlng["lat"] is not None and latlng["lng"] is not None:
+                user_photos = get_location_event_photos(latlng["lat"], latlng["lng"], radius_km=5.0, limit=10)
+            response_data["user_photos"] = user_photos
+        except Exception as e:
+            log_event("Orchestrator", f"Error getting user photos for {location}: {e}")
+            response_data["user_photos"] = []
+        
+        return response_data
+        
+    except Exception as e:
+        log_event("Orchestrator", f"Error in location_mood endpoint: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/display_locations")
+async def display_locations_endpoint(locations: List[Dict[str, Any]]):
+    """
+    Display locations on the frontend map with mood data.
+    """
+    try:
+        from tools.maps import display_locations_on_map
+        result = display_locations_on_map(locations)
+        return result
+    except Exception as e:
+        log_event("Orchestrator", f"Error in display_locations_endpoint: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/best_route")
+async def best_route_endpoint(
+    origin: str = Form(...),
+    destination: str = Form(...),
+    mode: str = Form("driving")
+):
+    """
+    Get the best route between two locations with mood data.
+    """
+    try:
+        from tools.maps import get_best_route, display_locations_on_map
+        result = get_best_route(origin, destination, mode)
+        
+        if result["success"]:
+            # Format locations for frontend display
+            display_result = display_locations_on_map(result["locations_to_display"])
+            result["locations_to_display"] = display_result["locations"]
+        
+        return result
+    except Exception as e:
+        log_event("Orchestrator", f"Error in best_route_endpoint: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/must_visit_places")
+async def must_visit_places_endpoint(
+    location: str = Form(...),
+    max_results: int = Form(3)
+):
+    """
+    Get must-visit places near a location with mood data.
+    """
+    try:
+        from tools.maps import get_must_visit_places_nearby, display_locations_on_map
+        result = get_must_visit_places_nearby(location, max_results)
+        
+        if result["success"]:
+            # Format locations for frontend display
+            display_result = display_locations_on_map(result["locations_to_display"])
+            result["locations_to_display"] = display_result["locations"]
+        
+        return result
+    except Exception as e:
+        log_event("Orchestrator", f"Error in must_visit_places_endpoint: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn

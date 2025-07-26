@@ -7,7 +7,7 @@ export async function sendChatMessage(userId: string, message: string): Promise<
   try {
     const response = await axios.post(`${API_BASE_URL}/chat`, {
       user_id: userId,
-      message,
+      message: message,
     });
     return response.data;
   } catch (error: any) {
@@ -16,14 +16,54 @@ export async function sendChatMessage(userId: string, message: string): Promise<
   }
 }
 
-export async function getLocationMood(location: string, datetimeStr?: string): Promise<any> {
+// Location Display and Mood Map Functions
+export async function displayLocationsOnMap(locations: any[]): Promise<any> {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/display_locations`, {
+      locations: locations
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error displaying locations on map:', error);
+    throw error;
+  }
+}
+
+export async function getLocationMoodWithDisplay(location: string, datetimeStr?: string): Promise<any> {
   try {
     const params: any = { location };
     if (datetimeStr) params.datetime_str = datetimeStr;
     const response = await axios.post(`${API_BASE_URL}/location_mood`, null, { params });
     return response.data;
   } catch (error: any) {
-    console.error('Error fetching location mood:', error);
+    console.error('Error fetching location mood with display:', error);
+    throw error;
+  }
+}
+
+export async function getBestRouteWithMood(origin: string, destination: string, mode: string = "driving"): Promise<any> {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/best_route`, {
+      origin: origin,
+      destination: destination,
+      mode: mode
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error getting best route with mood:', error);
+    throw error;
+  }
+}
+
+export async function getMustVisitPlacesWithMood(location: string, maxResults: number = 3): Promise<any> {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/must_visit_places`, {
+      location: location,
+      max_results: maxResults
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error getting must-visit places with mood:', error);
     throw error;
   }
 }
