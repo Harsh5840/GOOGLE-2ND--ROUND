@@ -220,14 +220,18 @@ def dispatch_tool(intent: str, entities: dict, query: str) -> tuple[bool, str]:
     elif intent == "google_search" and "query" in entities:
         # Implement google search tool call
         try:
-            from tools.google_search import search_google
+            from tools.google_search import google_search
             query = entities.get("query")
-            log_event("Orchestrator", f"Calling search_google with query: {query!r}")
-            reply = search_google(query=query, max_results=5)
-            log_event("Orchestrator", f"search_google reply: {reply!r}")
+            log_event("Orchestrator", f"Calling google_search with query: {query!r}")
+            results = google_search(query=query, num_results=5)
+            if results:
+                reply = f"Google search results for '{query}':\n" + "\n".join([f"- {r.get('title', 'No title')}: {r.get('snippet', 'No snippet')}" for r in results])
+            else:
+                reply = f"No results found for '{query}'"
+            log_event("Orchestrator", f"google_search reply: {reply[:100]}...")
             return True, reply
         except Exception as e:
-            log_event("Orchestrator", f"Error in search_google: {e}")
+            log_event("Orchestrator", f"Error in google_search: {e}")
             return False, f"Error performing Google search: {e}"
         
     elif intent == "get_best_route" and "current_location" in entities and "destination" in entities:
