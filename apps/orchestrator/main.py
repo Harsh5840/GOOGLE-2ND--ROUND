@@ -8,44 +8,46 @@ vertexai.init(
     location=os.getenv("GOOGLE_CLOUD_LOCATION")
 )
 
-from fastapi import FastAPI, Query, UploadFile, File, Form, HTTPException
+from fastapi import FastAPI, HTTPException, Form, Query
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import os
+import asyncio
 from google.cloud import aiplatform
 from shared.utils.logger import log_event
-from typing import Optional, List
+from typing import Optional, List, Dict, Any, Tuple
 import json
+from fastapi import UploadFile, File
+from google.cloud import storage
+from uuid import uuid4
 from datetime import datetime
 
 from agents.agent_router import agent_router
-from tools.reddit import fetch_reddit_posts
-from tools.twitter import fetch_twitter_posts
-from tools.news import fetch_city_news
 from agents.gemini_fallback_agent import run_gemini_fallback_agent
-from shared.utils.mood import aggregate_mood
 from agents.intent_extractor.agent import extract_intent
 from agents.agglomerator import aggregate_api_results
 from tools.maps import get_must_visit_places_nearby
 from tools.image_upload import upload_event_photo, get_all_event_photos, get_event_photo_by_id
+from tools.reddit import fetch_reddit_posts
+from tools.twitter import fetch_twitter_posts
+from tools.news import fetch_city_news
 from tools.firestore import (
-    create_or_update_user_profile, 
-    get_user_profile, 
+    create_or_update_user_profile,
+    get_user_profile,
     get_user_default_location,
     store_user_location,
-    get_recent_user_location,
     get_user_location_history,
     get_favorite_locations,
     add_favorite_location,
     store_unified_data,
     get_unified_data,
     get_aggregated_location_data,
-    store_user_query_history,
-    get_user_query_history,
     export_user_data,
     get_user_data_exports,
     restore_user_data,
     get_user_retention_analytics,
+    store_user_query_history,
     load_unified_data_to_firestore,
     get_unified_data_from_firestore,
     get_aggregated_location_data_from_firestore,
@@ -53,6 +55,8 @@ from tools.firestore import (
     get_unified_data_sources_for_location,
     clear_empty_cached_data
 )
+from shared.utils.mood import analyze_sentiment, aggregate_mood
+from shared.utils.user_photos import save_user_photo, fetch_user_photos_nearby
 
 # Initialize Google Cloud Vertex AI
 aiplatform.init(project=os.getenv("GCP_PROJECT_ID"), location=os.getenv("GCP_REGION"))
@@ -779,6 +783,23 @@ async def get_user_query_history_endpoint(user_id: str, limit: int = 20):
         log_event("Orchestrator", f"Error getting query history for {user_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/submit_photo")
+async def submit_photo(
+    file: UploadFile = File(...),
+    lat: float = Form(...),
+    lng: float = Form(...),
+    description: Optional[str] = Form(None),
+    user_id: Optional[str] = Form(None)
+):
+    """
+    Accepts a photo upload, geotags it, and stores metadata in Firestore.
+    """
+    photo_url = await save_user_photo(file, lat, lng, description, user_id)
+    if photo_url:
+        return {"success": True, "photo_url": photo_url}
+    else:
+        return {"success": False, "error": "Failed to save photo."}
+
 @app.post("/location_mood")
 async def location_mood(
     location: str = Query(..., description="Location name or address"),
@@ -788,7 +809,7 @@ async def location_mood(
 ):
     """
     Aggregate mood for a location at a given time using the unified aggregator response.
-    Returns a mood label, score, detected events, must-visit places, and source breakdown for frontend use.
+    Returns a mood label, score, detected events, must-visit places, user photos, and source breakdown for frontend use.
     """
     unified_data = aggregate_api_results(
         reddit_data=[],
@@ -799,12 +820,24 @@ async def location_mood(
         google_search_data=[],
     )
     mood_result = aggregate_mood(unified_data)
-    must_visit_places = []
+    must_visit_places = get_must_visit_places_nearby(location, max_results=3)
+    # Geocode location for lat/lng
+    try:
+        import googlemaps
+        gmaps = googlemaps.Client(key=os.getenv("GOOGLE_MAPS_API_KEY"))
+        geocode = gmaps.geocode(location)
+        latlng = geocode[0]["geometry"]["location"] if geocode else {"lat": None, "lng": None}
+    except Exception:
+        latlng = {"lat": None, "lng": None}
+    user_photos = []
+    if latlng["lat"] is not None and latlng["lng"] is not None:
+        user_photos = fetch_user_photos_nearby(latlng["lat"], latlng["lng"], radius_m=500)
     return {
         "location": location,
         "datetime": datetime_str,
         **mood_result,
         "must_visit_places": must_visit_places,
+        "user_photos": user_photos
     }
 
 if __name__ == "__main__":
