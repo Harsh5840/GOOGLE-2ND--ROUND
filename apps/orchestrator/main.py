@@ -8,11 +8,14 @@ vertexai.init(
     location=os.getenv("GOOGLE_CLOUD_LOCATION")
 )
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, UploadFile, File, Form, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from google.cloud import aiplatform
 from shared.utils.logger import log_event
-from typing import Optional
+from typing import Optional, List
+import io
 
 from agents.agent_router import agent_router
 from tools.reddit import fetch_reddit_posts
@@ -23,12 +26,16 @@ from shared.utils.mood import aggregate_mood
 from agents.intent_extractor.agent import extract_intent
 from agents.agglomerator import aggregate_api_results
 from tools.maps import get_must_visit_places_nearby
+from tools.image_upload import upload_event_photo, get_all_event_photos, get_event_photo_by_id
 
 # Initialize Google Cloud Vertex AI
 aiplatform.init(project=os.getenv("GCP_PROJECT_ID"), location=os.getenv("GCP_REGION"))
 
 # FastAPI app setup
 app = FastAPI()
+
+# Mount static files for uploaded images
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # Request schema
 class UserQuery(BaseModel):
@@ -40,6 +47,25 @@ class BotResponse(BaseModel):
     intent: str
     entities: dict
     reply: str
+
+# Event Photo schemas
+class EventPhotoResponse(BaseModel):
+    id: str
+    filename: str
+    file_url: str
+    latitude: float
+    longitude: float
+    user_id: str
+    description: Optional[str] = None
+    gemini_summary: str
+    upload_timestamp: str
+    status: str
+
+class UploadResponse(BaseModel):
+    success: bool
+    photo_id: Optional[str] = None
+    message: str
+    error: Optional[str] = None
 
 def dispatch_tool(intent: str, entities: dict, query: str) -> tuple[bool, str]:
     """
@@ -135,6 +161,74 @@ async def chat_router(query: UserQuery):
         reply = await run_gemini_fallback_agent(query.message, user_id=query.user_id)
 
     return BotResponse(intent=intent, entities=entities, reply=reply)
+
+@app.post("/upload_event_photo", response_model=UploadResponse)
+async def upload_event_photo_endpoint(
+    file: UploadFile = File(...),
+    latitude: float = Form(...),
+    longitude: float = Form(...),
+    user_id: str = Form(...),
+    description: Optional[str] = Form(None)
+):
+    """
+    Upload a geotagged image for city event reporting.
+    """
+    try:
+        # Validate file type
+        if not file.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="File must be an image")
+        
+        # Read image data
+        image_data = await file.read()
+        
+        # Upload the photo
+        result = upload_event_photo(
+            image_data=image_data,
+            latitude=latitude,
+            longitude=longitude,
+            user_id=user_id,
+            description=description
+        )
+        
+        if result["success"]:
+            return UploadResponse(
+                success=True,
+                photo_id=result["photo_id"],
+                message=result["message"]
+            )
+        else:
+            raise HTTPException(status_code=500, detail=result["error"])
+            
+    except Exception as e:
+        log_event("Orchestrator", f"Error in upload_event_photo_endpoint: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/event_photos", response_model=List[EventPhotoResponse])
+async def get_event_photos():
+    """
+    Get all uploaded event photos with their metadata and Gemini summaries.
+    """
+    try:
+        photos = get_all_event_photos()
+        return [EventPhotoResponse(**photo) for photo in photos]
+    except Exception as e:
+        log_event("Orchestrator", f"Error getting event photos: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/event_photos/{photo_id}", response_model=EventPhotoResponse)
+async def get_event_photo(photo_id: str):
+    """
+    Get a specific event photo by ID.
+    """
+    try:
+        photo = get_event_photo_by_id(photo_id)
+        if photo:
+            return EventPhotoResponse(**photo)
+        else:
+            raise HTTPException(status_code=404, detail="Photo not found")
+    except Exception as e:
+        log_event("Orchestrator", f"Error getting event photo {photo_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/location_mood")
 async def location_mood(

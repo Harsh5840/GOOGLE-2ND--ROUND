@@ -57,3 +57,38 @@ export async function pollPodcastJob(jobId: string) {
 export function getPodcastAudioUrl(filename: string) {
   return joinUrl(API_BASE_URL, `/files/${filename}`);
 }
+
+// Event Photos API
+export async function uploadEventPhoto(formData: FormData): Promise<any> {
+  try {
+    const response = await axios.post(`${API_BASE_URL}/upload_event_photo`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error uploading event photo:', error);
+    throw error;
+  }
+}
+
+export async function getEventPhotos(): Promise<any[]> {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/event_photos`);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error fetching event photos:', error);
+    throw error;
+  }
+}
+
+export async function getEventPhotoById(photoId: string): Promise<any> {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/event_photos/${photoId}`);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error fetching event photo:', error);
+    throw error;
+  }
+}
