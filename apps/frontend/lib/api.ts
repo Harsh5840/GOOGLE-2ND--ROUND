@@ -313,3 +313,116 @@ export async function getUserRetentionAnalytics(userId: string): Promise<any> {
     throw error;
   }
 }
+
+// Enhanced Unified Data Management API
+export async function loadUnifiedDataToFirestore(location: string, dataSources: string[] = ['reddit', 'twitter', 'news', 'maps', 'rag']): Promise<any> {
+  try {
+    const formData = new FormData();
+    formData.append('data_sources', dataSources.join(','));
+    
+    const response = await axios.post(`${API_BASE_URL}/unified-data/${location}/load`, formData);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error loading unified data to Firestore:', error);
+    throw error;
+  }
+}
+
+export async function getUnifiedDataSources(location: string): Promise<any> {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/unified-data/${location}/sources`);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error fetching unified data sources:', error);
+    throw error;
+  }
+}
+
+export async function refreshUnifiedData(location: string, dataSources: string[] = ['reddit', 'twitter', 'news', 'maps', 'rag']): Promise<any> {
+  try {
+    const formData = new FormData();
+    formData.append('data_sources', dataSources.join(','));
+    
+    const response = await axios.post(`${API_BASE_URL}/unified-data/${location}/refresh`, formData);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error refreshing unified data:', error);
+    throw error;
+  }
+}
+
+export async function getUnifiedDataFromFirestore(
+  location: string, 
+  dataType?: string, 
+  hours: number = 24, 
+  forceRefresh: boolean = false
+): Promise<any> {
+  try {
+    const params: any = { hours, force_refresh: forceRefresh };
+    if (dataType) params.data_type = dataType;
+    
+    const response = await axios.get(`${API_BASE_URL}/unified-data/${location}/firestore`, { params });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error fetching unified data from Firestore:', error);
+    throw error;
+  }
+}
+
+export async function getAggregatedDataFromFirestore(location: string, hours: number = 24): Promise<any> {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/unified-data/${location}/aggregated/firestore?hours=${hours}`);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error fetching aggregated data from Firestore:', error);
+    throw error;
+  }
+}
+
+// Enhanced wrapper functions that use Firestore as primary source
+export async function getUnifiedDataWithFirestore(
+  location: string, 
+  dataType?: string, 
+  hours: number = 24,
+  autoLoad: boolean = true
+): Promise<any> {
+  try {
+    // First try to get data from Firestore
+    let data = await getUnifiedDataFromFirestore(location, dataType, hours, false);
+    
+    // If no data and autoLoad is enabled, load fresh data
+    if (data.count === 0 && autoLoad) {
+      console.log(`No data found for ${location}, loading fresh data...`);
+      await loadUnifiedDataToFirestore(location);
+      data = await getUnifiedDataFromFirestore(location, dataType, hours, false);
+    }
+    
+    return data;
+  } catch (error: any) {
+    console.error('Error getting unified data with Firestore:', error);
+    throw error;
+  }
+}
+
+export async function getAggregatedDataWithFirestore(
+  location: string, 
+  hours: number = 24,
+  autoLoad: boolean = true
+): Promise<any> {
+  try {
+    // First try to get aggregated data from Firestore
+    let aggregated = await getAggregatedDataFromFirestore(location, hours);
+    
+    // If no data and autoLoad is enabled, load fresh data
+    if (!aggregated.success && autoLoad) {
+      console.log(`No aggregated data found for ${location}, loading fresh data...`);
+      await loadUnifiedDataToFirestore(location);
+      aggregated = await getAggregatedDataFromFirestore(location, hours);
+    }
+    
+    return aggregated;
+  } catch (error: any) {
+    console.error('Error getting aggregated data with Firestore:', error);
+    throw error;
+  }
+}

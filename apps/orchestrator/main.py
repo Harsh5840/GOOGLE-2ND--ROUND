@@ -44,7 +44,12 @@ from tools.firestore import (
     export_user_data,
     get_user_data_exports,
     restore_user_data,
-    get_user_retention_analytics
+    get_user_retention_analytics,
+    load_unified_data_to_firestore,
+    get_unified_data_from_firestore,
+    get_aggregated_location_data_from_firestore,
+    refresh_unified_data_for_location,
+    get_unified_data_sources_for_location
 )
 
 # Initialize Google Cloud Vertex AI
@@ -355,6 +360,76 @@ async def get_aggregated_data_endpoint(location: str, hours: int = 24):
         return aggregated
     except Exception as e:
         log_event("Orchestrator", f"Error getting aggregated data for {location}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Enhanced Unified Data Management Endpoints
+@app.post("/unified-data/{location}/load")
+async def load_unified_data_endpoint(
+    location: str,
+    data_sources: str = Form("reddit,twitter,news,maps,rag")  # Comma-separated list
+):
+    """Load unified data from various sources into Firestore for a specific location"""
+    try:
+        sources_list = [s.strip() for s in data_sources.split(",") if s.strip()]
+        result = load_unified_data_to_firestore(location, sources_list)
+        if result["success"]:
+            return result
+        else:
+            raise HTTPException(status_code=500, detail=result["error"])
+    except Exception as e:
+        log_event("Orchestrator", f"Error loading unified data for {location}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/unified-data/{location}/sources")
+async def get_unified_data_sources_endpoint(location: str):
+    """Get available data sources for a location from Firestore"""
+    try:
+        sources = get_unified_data_sources_for_location(location)
+        return {"location": location, "sources": sources}
+    except Exception as e:
+        log_event("Orchestrator", f"Error getting data sources for {location}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/unified-data/{location}/refresh")
+async def refresh_unified_data_endpoint(
+    location: str,
+    data_sources: str = Form("reddit,twitter,news,maps,rag")  # Comma-separated list
+):
+    """Force refresh unified data for a specific location"""
+    try:
+        sources_list = [s.strip() for s in data_sources.split(",") if s.strip()]
+        result = refresh_unified_data_for_location(location, sources_list)
+        if result["success"]:
+            return result
+        else:
+            raise HTTPException(status_code=500, detail=result["error"])
+    except Exception as e:
+        log_event("Orchestrator", f"Error refreshing unified data for {location}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/unified-data/{location}/firestore")
+async def get_unified_data_firestore_endpoint(
+    location: str,
+    data_type: Optional[str] = None,
+    hours: int = 24,
+    force_refresh: bool = False
+):
+    """Get unified data directly from Firestore with optional refresh"""
+    try:
+        data = get_unified_data_from_firestore(location, data_type, hours, force_refresh)
+        return {"location": location, "data": data, "count": len(data)}
+    except Exception as e:
+        log_event("Orchestrator", f"Error getting unified data from Firestore for {location}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/unified-data/{location}/aggregated/firestore")
+async def get_aggregated_data_firestore_endpoint(location: str, hours: int = 24):
+    """Get aggregated data directly from Firestore"""
+    try:
+        aggregated = get_aggregated_location_data_from_firestore(location, hours)
+        return aggregated
+    except Exception as e:
+        log_event("Orchestrator", f"Error getting aggregated data from Firestore for {location}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 # Event Photos Endpoints

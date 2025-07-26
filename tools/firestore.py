@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from shared.utils.logger import log_event
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
+from agents.agglomerator import aggregate_api_results
 import json
 
 load_dotenv()
@@ -379,7 +380,243 @@ def add_favorite_location(user_id: str, latitude: float, longitude: float,
         log_event("FirestoreTool", f"Error adding favorite location for {user_id}: {e}")
         return {"success": False, "error": str(e)}
 
-# Unified Data Storage
+# Unified Data Management with Firestore as Primary Source
+def load_unified_data_to_firestore(location: str, data_sources: List[str] = None) -> Dict[str, Any]:
+    """
+    Load unified data from various sources into Firestore for a specific location.
+    This function fetches data from APIs and stores it in Firestore for later retrieval.
+    """
+    try:
+        if data_sources is None:
+            data_sources = ['reddit', 'twitter', 'news', 'maps', 'rag']
+        
+        unified_data = {}
+        timestamp = datetime.utcnow().isoformat()
+        
+        # Load Reddit data
+        if 'reddit' in data_sources:
+            try:
+                from tools.reddit import fetch_reddit_posts
+                reddit_data = fetch_reddit_posts(location=location, topic="city events", limit=10)
+                if reddit_data:
+                    store_unified_data(location, "reddit", {
+                        "data": reddit_data,
+                        "source": "reddit",
+                        "timestamp": timestamp,
+                        "location": location
+                    })
+                    unified_data['reddit'] = reddit_data
+                    log_event("FirestoreTool", f"Loaded Reddit data for {location}")
+            except Exception as e:
+                log_event("FirestoreTool", f"Error loading Reddit data for {location}: {e}")
+        
+        # Load Twitter data
+        if 'twitter' in data_sources:
+            try:
+                from tools.twitter import fetch_twitter_posts
+                twitter_data = fetch_twitter_posts(location=location, topic="city events", limit=10)
+                if twitter_data:
+                    store_unified_data(location, "twitter", {
+                        "data": twitter_data,
+                        "source": "twitter",
+                        "timestamp": timestamp,
+                        "location": location
+                    })
+                    unified_data['twitter'] = twitter_data
+                    log_event("FirestoreTool", f"Loaded Twitter data for {location}")
+            except Exception as e:
+                log_event("FirestoreTool", f"Error loading Twitter data for {location}: {e}")
+        
+        # Load News data
+        if 'news' in data_sources:
+            try:
+                from tools.news import fetch_city_news
+                news_data = fetch_city_news(city=location, limit=5)
+                if news_data:
+                    store_unified_data(location, "news", {
+                        "data": news_data,
+                        "source": "news",
+                        "timestamp": timestamp,
+                        "location": location
+                    })
+                    unified_data['news'] = news_data
+                    log_event("FirestoreTool", f"Loaded News data for {location}")
+            except Exception as e:
+                log_event("FirestoreTool", f"Error loading News data for {location}: {e}")
+        
+        # Load Maps data
+        if 'maps' in data_sources:
+            try:
+                from tools.maps import get_must_visit_places_nearby
+                maps_data = get_must_visit_places_nearby(location, max_results=10)
+                if maps_data:
+                    store_unified_data(location, "maps", {
+                        "data": maps_data,
+                        "source": "maps",
+                        "timestamp": timestamp,
+                        "location": location
+                    })
+                    unified_data['maps'] = maps_data
+                    log_event("FirestoreTool", f"Loaded Maps data for {location}")
+            except Exception as e:
+                log_event("FirestoreTool", f"Error loading Maps data for {location}: {e}")
+        
+        # Load RAG data (if available)
+        if 'rag' in data_sources:
+            try:
+                from tools.rag import query_rag_system
+                rag_data = query_rag_system(f"events and activities in {location}")
+                if rag_data:
+                    store_unified_data(location, "rag", {
+                        "data": rag_data,
+                        "source": "rag",
+                        "timestamp": timestamp,
+                        "location": location
+                    })
+                    unified_data['rag'] = rag_data
+                    log_event("FirestoreTool", f"Loaded RAG data for {location}")
+            except Exception as e:
+                log_event("FirestoreTool", f"Error loading RAG data for {location}: {e}")
+        
+        # Store aggregated data
+        if unified_data:
+            store_unified_data(location, "aggregated", {
+                "data": unified_data,
+                "sources": list(unified_data.keys()),
+                "timestamp": timestamp,
+                "location": location,
+                "total_sources": len(unified_data)
+            })
+            log_event("FirestoreTool", f"Stored aggregated unified data for {location}")
+        
+        return {
+            "success": True,
+            "location": location,
+            "sources_loaded": list(unified_data.keys()),
+            "timestamp": timestamp,
+            "data": unified_data
+        }
+        
+    except Exception as e:
+        log_event("FirestoreTool", f"Error loading unified data to Firestore for {location}: {e}")
+        return {"success": False, "error": str(e)}
+
+def get_unified_data_from_firestore(location: str, data_type: Optional[str] = None, 
+                                   hours: int = 24, force_refresh: bool = False) -> List[Dict[str, Any]]:
+    """
+    Get unified data from Firestore. If force_refresh is True or data is stale, 
+    it will reload data from sources first.
+    """
+    try:
+        # Check if we need to refresh data
+        if force_refresh:
+            load_unified_data_to_firestore(location)
+        
+        # Get data from Firestore
+        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        
+        if data_type:
+            # Get specific data type
+            data_ref = (
+                db.collection(UNIFIED_DATA_COLLECTION)
+                  .where("location", "==", location)
+                  .where("data_type", "==", data_type)
+                  .where("timestamp", ">=", cutoff_time.isoformat())
+                  .order_by("timestamp", direction=firestore.Query.DESCENDING)
+            )
+        else:
+            # Get all data types
+            data_ref = (
+                db.collection(UNIFIED_DATA_COLLECTION)
+                  .where("location", "==", location)
+                  .where("timestamp", ">=", cutoff_time.isoformat())
+                  .order_by("timestamp", direction=firestore.Query.DESCENDING)
+            )
+        
+        docs = data_ref.stream()
+        data = [doc.to_dict() for doc in docs]
+        
+        # If no recent data and not forcing refresh, try to load fresh data
+        if not data and not force_refresh:
+            log_event("FirestoreTool", f"No recent data found for {location}, loading fresh data")
+            load_result = load_unified_data_to_firestore(location)
+            if load_result["success"]:
+                # Try to get the data again
+                return get_unified_data_from_firestore(location, data_type, hours, force_refresh=False)
+        
+        return data
+        
+    except Exception as e:
+        log_event("FirestoreTool", f"Error getting unified data from Firestore for {location}: {e}")
+        return []
+
+def get_aggregated_location_data_from_firestore(location: str, hours: int = 24) -> Dict[str, Any]:
+    """
+    Get aggregated location data from Firestore, combining all data sources.
+    """
+    try:
+        # Get aggregated data first
+        aggregated_data = get_unified_data_from_firestore(location, "aggregated", hours)
+        
+        if aggregated_data:
+            # Return the most recent aggregated data
+            latest_aggregated = aggregated_data[0]
+            return {
+                "success": True,
+                "location": location,
+                "timestamp": latest_aggregated.get("timestamp"),
+                "sources": latest_aggregated.get("sources", []),
+                "total_sources": latest_aggregated.get("total_sources", 0),
+                "data": latest_aggregated.get("data", {})
+            }
+        else:
+            # If no aggregated data, try to load fresh data
+            load_result = load_unified_data_to_firestore(location)
+            if load_result["success"]:
+                return get_aggregated_location_data_from_firestore(location, hours)
+            else:
+                return {
+                    "success": False,
+                    "location": location,
+                    "error": "No data available and failed to load fresh data"
+                }
+        
+    except Exception as e:
+        log_event("FirestoreTool", f"Error getting aggregated location data from Firestore for {location}: {e}")
+        return {
+            "success": False,
+            "location": location,
+            "error": str(e)
+        }
+
+def refresh_unified_data_for_location(location: str, data_sources: List[str] = None) -> Dict[str, Any]:
+    """
+    Force refresh unified data for a specific location by loading fresh data from all sources.
+    """
+    try:
+        result = load_unified_data_to_firestore(location, data_sources)
+        if result["success"]:
+            log_event("FirestoreTool", f"Successfully refreshed unified data for {location}")
+        return result
+    except Exception as e:
+        log_event("FirestoreTool", f"Error refreshing unified data for {location}: {e}")
+        return {"success": False, "error": str(e)}
+
+def get_unified_data_sources_for_location(location: str) -> List[str]:
+    """
+    Get list of available data sources for a location from Firestore.
+    """
+    try:
+        data = get_unified_data_from_firestore(location, hours=168)  # Last 7 days
+        sources = set()
+        for item in data:
+            if item.get("data_type") != "aggregated":
+                sources.add(item.get("data_type", ""))
+        return list(sources)
+    except Exception as e:
+        log_event("FirestoreTool", f"Error getting data sources for {location}: {e}")
+        return []
+
 def store_unified_data(location: str, data_type: str, data: Dict[str, Any], 
                       user_id: Optional[str] = None) -> Dict[str, Any]:
     """Store unified data from various sources (Twitter, Reddit, News, etc.)"""
@@ -403,51 +640,26 @@ def store_unified_data(location: str, data_type: str, data: Dict[str, Any],
 
 def get_unified_data(location: str, data_type: Optional[str] = None, 
                     hours: int = 24) -> List[Dict[str, Any]]:
-    """Get unified data for a location within specified hours"""
+    """
+    Get unified data for a location within specified hours.
+    This function now uses Firestore as the primary source and will load data if needed.
+    """
     try:
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
-        
-        query = (
-            db.collection(UNIFIED_DATA_COLLECTION)
-              .where("location", "==", location)
-              .where("timestamp", ">=", cutoff_time.isoformat())
-              .order_by("timestamp", direction=firestore.Query.DESCENDING)
-        )
-        
-        if data_type:
-            query = query.where("data_type", "==", data_type)
-        
-        docs = query.stream()
-        return [doc.to_dict() for doc in docs]
+        # Use the new Firestore-based function
+        return get_unified_data_from_firestore(location, data_type, hours, force_refresh=False)
         
     except Exception as e:
         log_event("FirestoreTool", f"Error getting unified data for {location}: {e}")
         return []
 
 def get_aggregated_location_data(location: str, hours: int = 24) -> Dict[str, Any]:
-    """Get aggregated data from all sources for a location"""
+    """
+    Get aggregated data from all sources for a location.
+    This function now uses Firestore as the primary source and will load data if needed.
+    """
     try:
-        all_data = get_unified_data(location, hours=hours)
-        
-        aggregated = {
-            "location": location,
-            "timestamp": datetime.utcnow().isoformat(),
-            "data_sources": {},
-            "summary": {
-                "total_mentions": 0,
-                "sentiment_score": 0,
-                "top_topics": [],
-                "recent_events": []
-            }
-        }
-        
-        for data_item in all_data:
-            data_type = data_item.get("data_type")
-            if data_type not in aggregated["data_sources"]:
-                aggregated["data_sources"][data_type] = []
-            aggregated["data_sources"][data_type].append(data_item["data"])
-        
-        return aggregated
+        # Use the new Firestore-based function
+        return get_aggregated_location_data_from_firestore(location, hours)
         
     except Exception as e:
         log_event("FirestoreTool", f"Error getting aggregated data for {location}: {e}")
