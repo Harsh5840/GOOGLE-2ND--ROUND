@@ -8,11 +8,14 @@ vertexai.init(
     location=os.getenv("GOOGLE_CLOUD_LOCATION")
 )
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, UploadFile, File, Form, HTTPException
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from google.cloud import aiplatform
 from shared.utils.logger import log_event
-from typing import Optional
+from typing import Optional, List
+import json
 
 from agents.agent_router import agent_router
 from tools.reddit import fetch_reddit_posts
@@ -23,12 +26,31 @@ from shared.utils.mood import aggregate_mood
 from agents.intent_extractor.agent import extract_intent
 from agents.agglomerator import aggregate_api_results
 from tools.maps import get_must_visit_places_nearby
+from tools.image_upload import upload_event_photo, get_all_event_photos, get_event_photo_by_id
+from tools.firestore import (
+    create_or_update_user_profile, 
+    get_user_profile, 
+    get_user_default_location,
+    store_user_location,
+    get_recent_user_location,
+    get_user_location_history,
+    get_favorite_locations,
+    add_favorite_location,
+    store_unified_data,
+    get_unified_data,
+    get_aggregated_location_data,
+    store_user_query_history,
+    get_user_query_history
+)
 
 # Initialize Google Cloud Vertex AI
 aiplatform.init(project=os.getenv("GCP_PROJECT_ID"), location=os.getenv("GCP_REGION"))
 
 # FastAPI app setup
 app = FastAPI()
+
+# Static file serving for uploaded images
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # Request schema
 class UserQuery(BaseModel):
@@ -40,6 +62,47 @@ class BotResponse(BaseModel):
     intent: str
     entities: dict
     reply: str
+
+# Event Photo schemas
+class EventPhotoResponse(BaseModel):
+    id: str
+    filename: str
+    file_url: str
+    latitude: float
+    longitude: float
+    user_id: str
+    description: Optional[str] = None
+    gemini_summary: str
+    upload_timestamp: str
+    status: str
+
+class UploadResponse(BaseModel):
+    success: bool
+    photo_id: Optional[str] = None
+    message: str
+    error: Optional[str] = None
+
+# User Profile schemas
+class UserProfileResponse(BaseModel):
+    user_id: str
+    preferences: dict
+    created_at: str
+    last_updated: str
+
+class LocationHistoryResponse(BaseModel):
+    user_id: str
+    latitude: float
+    longitude: float
+    location_name: Optional[str] = None
+    activity_type: Optional[str] = None
+    timestamp: str
+
+class UnifiedDataResponse(BaseModel):
+    location: str
+    data_type: str
+    data: dict
+    timestamp: str
+    processed: bool
 
 def dispatch_tool(intent: str, entities: dict, query: str) -> tuple[bool, str]:
     """
@@ -134,7 +197,251 @@ async def chat_router(query: UserQuery):
         log_event("Orchestrator", "No valid reply from tool, falling back to Gemini LLM.")
         reply = await run_gemini_fallback_agent(query.message, user_id=query.user_id)
 
+    # 6. Store query history in Firestore
+    try:
+        store_user_query_history(
+            user_id=query.user_id,
+            query=query.message,
+            response_data={"intent": intent, "entities": entities, "reply": reply},
+            location=entities.get("location")
+        )
+    except Exception as e:
+        log_event("Orchestrator", f"Error storing query history: {str(e)}")
+
     return BotResponse(intent=intent, entities=entities, reply=reply)
+
+# User Profile Management Endpoints
+@app.post("/user/profile", response_model=UserProfileResponse)
+async def create_update_user_profile(
+    user_id: str = Form(...),
+    profile_data: str = Form(...)  # JSON string
+):
+    """Create or update user profile"""
+    try:
+        data = json.loads(profile_data)
+        result = create_or_update_user_profile(user_id, data)
+        if result["success"]:
+            return UserProfileResponse(**result["profile"])
+        else:
+            raise HTTPException(status_code=500, detail=result["error"])
+    except Exception as e:
+        log_event("Orchestrator", f"Error in create_update_user_profile: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/user/profile/{user_id}", response_model=UserProfileResponse)
+async def get_user_profile_endpoint(user_id: str):
+    """Get user profile by ID"""
+    try:
+        profile = get_user_profile(user_id)
+        if profile:
+            return UserProfileResponse(**profile)
+        else:
+            raise HTTPException(status_code=404, detail="User profile not found")
+    except Exception as e:
+        log_event("Orchestrator", f"Error getting user profile {user_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/user/{user_id}/default-location")
+async def get_user_default_location_endpoint(user_id: str):
+    """Get user's default location"""
+    try:
+        location = get_user_default_location(user_id)
+        return {"location": location}
+    except Exception as e:
+        log_event("Orchestrator", f"Error getting default location for {user_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Location History Endpoints
+@app.post("/user/location")
+async def store_user_location_endpoint(
+    user_id: str = Form(...),
+    latitude: float = Form(...),
+    longitude: float = Form(...),
+    location_name: Optional[str] = Form(None),
+    activity_type: Optional[str] = Form(None)
+):
+    """Store user location"""
+    try:
+        result = store_user_location(user_id, latitude, longitude, location_name, activity_type)
+        if result["success"]:
+            return result
+        else:
+            raise HTTPException(status_code=500, detail=result["error"])
+    except Exception as e:
+        log_event("Orchestrator", f"Error storing user location: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/user/{user_id}/location-history")
+async def get_user_location_history_endpoint(user_id: str, days: int = 7):
+    """Get user's location history"""
+    try:
+        history = get_user_location_history(user_id, days)
+        return {"history": history}
+    except Exception as e:
+        log_event("Orchestrator", f"Error getting location history for {user_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/user/{user_id}/favorite-locations")
+async def get_favorite_locations_endpoint(user_id: str):
+    """Get user's favorite locations"""
+    try:
+        favorites = get_favorite_locations(user_id)
+        return {"favorites": favorites}
+    except Exception as e:
+        log_event("Orchestrator", f"Error getting favorite locations for {user_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/user/favorite-location")
+async def add_favorite_location_endpoint(
+    user_id: str = Form(...),
+    latitude: float = Form(...),
+    longitude: float = Form(...),
+    location_name: str = Form(...)
+):
+    """Add location to user's favorites"""
+    try:
+        result = add_favorite_location(user_id, latitude, longitude, location_name)
+        if result["success"]:
+            return result
+        else:
+            raise HTTPException(status_code=400, detail=result["error"])
+    except Exception as e:
+        log_event("Orchestrator", f"Error adding favorite location: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Unified Data Endpoints
+@app.post("/unified-data")
+async def store_unified_data_endpoint(
+    location: str = Form(...),
+    data_type: str = Form(...),
+    data: str = Form(...),  # JSON string
+    user_id: Optional[str] = Form(None)
+):
+    """Store unified data"""
+    try:
+        data_dict = json.loads(data)
+        result = store_unified_data(location, data_type, data_dict, user_id)
+        if result["success"]:
+            return result
+        else:
+            raise HTTPException(status_code=500, detail=result["error"])
+    except Exception as e:
+        log_event("Orchestrator", f"Error storing unified data: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/unified-data/{location}")
+async def get_unified_data_endpoint(
+    location: str,
+    data_type: Optional[str] = None,
+    hours: int = 24
+):
+    """Get unified data for a location"""
+    try:
+        data = get_unified_data(location, data_type, hours)
+        return {"data": data}
+    except Exception as e:
+        log_event("Orchestrator", f"Error getting unified data for {location}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/unified-data/{location}/aggregated")
+async def get_aggregated_data_endpoint(location: str, hours: int = 24):
+    """Get aggregated data for a location"""
+    try:
+        aggregated = get_aggregated_location_data(location, hours)
+        return aggregated
+    except Exception as e:
+        log_event("Orchestrator", f"Error getting aggregated data for {location}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Event Photos Endpoints
+@app.post("/upload_event_photo", response_model=UploadResponse)
+async def upload_event_photo_endpoint(
+    file: UploadFile = File(...),
+    latitude: float = Form(...),
+    longitude: float = Form(...),
+    user_id: str = Form(...),
+    description: Optional[str] = Form(None)
+):
+    """Upload a geotagged image for city event reporting."""
+    try:
+        # Validate file type
+        if not file.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="File must be an image")
+        
+        # Read image data
+        image_data = await file.read()
+        
+        # Upload the photo
+        result = upload_event_photo(
+            image_data=image_data,
+            latitude=latitude,
+            longitude=longitude,
+            user_id=user_id,
+            description=description
+        )
+        
+        if result["success"]:
+            return UploadResponse(
+                success=True,
+                photo_id=result["photo_id"],
+                message=result["message"]
+            )
+        else:
+            raise HTTPException(status_code=500, detail=result["error"])
+            
+    except Exception as e:
+        log_event("Orchestrator", f"Error in upload_event_photo_endpoint: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/event_photos", response_model=List[EventPhotoResponse])
+async def get_event_photos():
+    """Get all uploaded event photos with their metadata and Gemini summaries."""
+    try:
+        photos = get_all_event_photos()
+        return [EventPhotoResponse(**photo) for photo in photos]
+    except Exception as e:
+        log_event("Orchestrator", f"Error getting event photos: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/event_photos/{photo_id}", response_model=EventPhotoResponse)
+async def get_event_photo(photo_id: str):
+    """Get a specific event photo by ID."""
+    try:
+        photo = get_event_photo_by_id(photo_id)
+        if photo:
+            return EventPhotoResponse(**photo)
+        else:
+            raise HTTPException(status_code=404, detail="Photo not found")
+    except Exception as e:
+        log_event("Orchestrator", f"Error getting event photo {photo_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/user/{user_id}/event-photos")
+async def get_user_event_photos_endpoint(user_id: str, limit: int = 50):
+    """Get all event photos uploaded by a specific user"""
+    try:
+        from tools.firestore import get_user_event_photos
+        photos = get_user_event_photos(user_id, limit)
+        return {"photos": photos}
+    except Exception as e:
+        log_event("Orchestrator", f"Error getting user event photos for {user_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/location/{latitude}/{longitude}/event-photos")
+async def get_location_event_photos_endpoint(
+    latitude: float,
+    longitude: float,
+    radius_km: float = 5.0,
+    limit: int = 50
+):
+    """Get event photos within a radius of specified coordinates"""
+    try:
+        from tools.firestore import get_location_event_photos
+        photos = get_location_event_photos(latitude, longitude, radius_km, limit)
+        return {"photos": photos}
+    except Exception as e:
+        log_event("Orchestrator", f"Error getting location event photos: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/location_mood")
 async def location_mood(
