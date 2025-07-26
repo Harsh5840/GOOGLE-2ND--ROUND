@@ -58,6 +58,7 @@ import { getSeverityColor, formatTimeAgo } from "./lib/utils"
 
 import { sendChatMessage, getLocationMood } from "@/lib/api"
 import { ChatMessage } from "@/types/chat"
+import LoginButton from "./components/LoginButton";
 
 interface CityEvent {
   id: number;
@@ -576,6 +577,7 @@ export default function UrbanPulseDashboard() {
           : "bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100"
       }`}
     >
+      <LoginButton />
       {/* Enhanced Header */}
       <Header
         isDarkMode={isDarkMode}
