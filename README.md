@@ -1,92 +1,89 @@
-# 🌐 CityScape
+# City Project - Smart City Chatbot
 
-CityScape is an intelligent, agent-driven platform that analyzes and predicts events in a city by processing multi-source data streams. Designed with Google Cloud technologies and agentic AI, it delivers real-time insights, proactive alerts, and user-specific summaries through an interactive dashboard.
+A FastAPI-based chatbot system for smart city queries with direct tool integration and robust fallback mechanisms.
 
----
+## Architecture
 
-## 🚀 Features
+### Core Components
 
-✅ **Data Ingestion & Processing**
+- **FastAPI Orchestrator** (`apps/orchestrator/main.py`): Main entry point that handles user queries, intent extraction, and tool dispatch
+- **Intent Extractor** (`agents/intent_extractor/agent.py`): Combines regex patterns and LLM for intent/entity recognition
+- **Direct Tool Integration**: Tools are called directly from the orchestrator for reliability
+- **Gemini Fallback Agent**: Robust LLM fallback when tools fail or return errors
 
-* Pulls data from social APIs (Twitter, Instagram, Reddit) using Pub/Sub.
-* Supports geo-tagged user uploads and web scraping.
-* Normalizes and synthesizes data with Vertex AI.
+### Tool Modules
 
-✅ **Predictive Analytics**
+- **Twitter** (`tools/twitter.py`): Fetch Twitter posts by location and topic
+- **Reddit** (`tools/reddit.py`): Fetch Reddit posts by subreddit
+- **News** (`tools/news.py`): Fetch city-specific news articles
+- **Maps** (`tools/maps.py`): Get must-visit places and route information
+- **Firestore** (`tools/firestore.py`): Database operations for reports and similar queries
+- **Google Search** (`tools/google_search.py`): Web search functionality
 
-* Detects city-wide trends and mood shifts.
-* Predicts cascading effects using Vertex AI models.
-* Provides actionable predictions for 3rd order effects (e.g., traffic surges, event escalations).
+### Agent Components
 
-✅ **Reasoning & Actions**
+- **Gemini Fallback Agent** (`agents/gemini_fallback_agent.py`): LLM-based fallback for failed tool calls
+- **Agent Router** (`agents/agent_router.py`): Minimal router for fallback cases
+- **Session Service** (`agents/session_service.py`): Centralized session management
 
-* Deduplicates and classifies multi-source data.
-* Generates summaries and plots incidents on live maps.
-* Drives decisions using Vertex Agent Builder (Google ADK).
+## Recent Improvements
 
-✅ **Interactive Dashboard**
+### Removed Redundancies
 
-* Built with Next.js for real-time updates.
-* Displays mood overlays and geo-tagged reports.
-* Supports offline summaries via Gemini API.
+- **Deleted unused ADK agent files**: `research_agent.py`, `data_agent.py`, `analysis_agent.py`, `report_agent.py`, `root_agent.py`, `city_adk_agent.py`
+- **Simplified agent_router**: Now only handles minimal fallback cases
+- **Cleaned up imports**: Removed unused `TextBlob` and `sys` imports
+- **Implemented missing tools**: Added news tool integration
 
-✅ **Proactive Notifications**
+### Architecture Benefits
 
-* Sends predictive alerts and user-specific summaries.
-* Filters notifications using Firebase Cloud Messaging.
+- **Direct tool calls**: Bypasses ADK complexity for reliability
+- **Structured error handling**: Clear success/failure responses with fallback
+- **Centralized orchestration**: Single point of control for all queries
+- **Robust fallback**: Multiple layers of fallback ensure user always gets a response
 
----
+## Usage
 
-## ⚙️ Tech Stack
+### Start the Server
 
-### Google Cloud Platform (GCP):
-
-* **Pub/Sub** – Data stream ingestion
-* **Vertex AI** – Predictive models, summarization
-* **Firestore** – Real-time database for app state
-* **Cloud Functions** – Event-driven processing
-* **Firebase Hosting & Cloud Messaging** – Frontend hosting & notifications
-
-### Frontend:
-
-* **Next.js** – Interactive, real-time dashboard
-* **Tailwind CSS** – UI styling
-
-### Backend:
-
-* **Node.js / Python** – Cloud Functions logic
-* **Google ADK (Agent Builder)** – Reasoning workflows
-
----
-
-## 🧠 System Architecture
-
-```
-[Data Ingestion & Processing]
-        |
-[Predictive Agent] ---> [Reasoning & Actions Agent]
-        |                          |
-[Frontend Interaction Agent]       |
-        |                          |
-[Notifications Agent] <-------------
+```bash
+cd city-proj
+python -m apps.orchestrator.main
 ```
 
-* **Ingestion**: Social APIs, user uploads, web scraping.
-* **Processing**: Clean, deduplicate, synthesize.
-* **Prediction**: Detect trends and future events.
-* **Reasoning**: Summarize, decide actions.
-* **Interaction**: Display data and notify users.
+### API Endpoints
 
----
+- `POST /chat`: Main chatbot endpoint
+- `POST /location_mood`: Location-based mood aggregation
 
-## 🏆 Built For
+### Example Query
 
-This project was built as part of the **Google Cloud Hackathon** to showcase agentic AI systems leveraging Google ADK and Firebase for real-time city intelligence.
+```bash
+curl -X POST "http://localhost:8000/chat" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user_id": "user123",
+    "message": "What is Twitter saying about New York City?"
+  }'
+```
 
----
+## Environment Variables
 
-## 🤝 Contributing
+Required environment variables:
+- `GOOGLE_CLOUD_PROJECT`: Google Cloud project ID
+- `GOOGLE_CLOUD_LOCATION`: Vertex AI location
+- `GOOGLE_MAPS_API_KEY`: Google Maps API key
+- `NEWS_API_KEY`: News API key
+- `REDDIT_CLIENT_ID`: Reddit API credentials
+- `REDDIT_CLIENT_SECRET`: Reddit API credentials
+- `TWITTER_BEARER_TOKEN`: Twitter API credentials
 
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
+## Development
 
----
+The system uses a clean, direct architecture:
+1. User query → Intent extraction
+2. Intent → Direct tool dispatch
+3. Tool response → User or fallback to LLM
+4. Always returns meaningful response
+
+This approach eliminates the complexity of multi-agent coordination while maintaining reliability and functionality.

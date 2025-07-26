@@ -1,23 +1,17 @@
-from agents.rag_agent import run_rag_agent
-from agents.firestore_history_agent import run_firestore_history_agent
 from agents.gemini_fallback_agent import run_gemini_fallback_agent
 
 async def agent_router(tool_name: str, args: dict, fallback: str = "gemini") -> str:
     """
-    Routes the tool call to the correct single-tool agent. Falls back to Gemini LLM or Google Search if tool is not found or fails.
+    Minimal router for fallback cases. Routes to Gemini LLM fallback.
     Args:
-        tool_name (str): The name of the tool/agent to use.
+        tool_name (str): The name of the tool/agent to use (unused in current implementation).
         args (dict): Arguments for the tool.
-        fallback (str): 'gemini' or 'google_search'.
+        fallback (str): Always defaults to 'gemini'.
     Returns:
-        str: The agent's response.
+        str: The fallback agent's response.
     """
     try:
-        if tool_name == "get_rag_fallback":
-            return await run_rag_agent(**args)
-        elif tool_name == "store_user_query_history":
-            return await run_firestore_history_agent(**args)
-        else:
-            return f"[Fallback: Gemini] {await run_gemini_fallback_agent(args.get('query', ''))}"
+        # Currently only handles fallback to Gemini LLM
+        return await run_gemini_fallback_agent(args.get('query', ''), user_id=args.get('user_id', 'testuser'))
     except Exception as e:
-        return f"[Fallback: Gemini] {await run_gemini_fallback_agent(args.get('query', ''))}" 
+        return f"Error in fallback: {e}" 
