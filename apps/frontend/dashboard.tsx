@@ -54,6 +54,7 @@ import Sidebar from "./components/Sidebar"
 import Notifications from "./components/Notifications"
 import Chat from "./components/Chat"
 import ReportModal from "./components/ReportModal"
+import PhotoUpload from "./components/PhotoUpload"
 import { getSeverityColor, formatTimeAgo } from "./lib/utils"
 
 import { sendChatMessage, getLocationMood } from "@/lib/api"
@@ -722,6 +723,9 @@ export default function UrbanPulseDashboard() {
         handleSubmitReport={handleSubmitReport}
         eventTypes={eventTypes}
       />
+
+      {/* Photo Upload Component */}
+      <PhotoUpload />
     </div>
   )
 }
