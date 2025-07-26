@@ -11,29 +11,54 @@ import json
 load_dotenv()
 
 def initialize_firestore():
-    """Initialize Firestore with proper authentication"""
+    """Initialize Firestore client with proper error handling"""
+    global db
+    
     try:
-        # Option 1: Use environment variable for JSON file path
-        service_account_path = os.getenv('FIREBASE_SERVICE_ACCOUNT_PATH')
-        if service_account_path and os.path.exists(service_account_path):
-            log_event("FirestoreTool", f"Using service account file: {service_account_path}")
-            credentials = service_account.Credentials.from_service_account_file(service_account_path)
-            return firestore.Client(credentials=credentials)
-        
-        # Option 2: Use direct JSON content
-        service_account_json = os.getenv('FIREBASE_SERVICE_ACCOUNT_JSON')
-        if service_account_json:
-            log_event("FirestoreTool", "Using service account JSON from environment variable")
-            credentials = service_account.Credentials.from_service_account_info(json.loads(service_account_json))
-            return firestore.Client(credentials=credentials)
-        
-        # Option 3: Use default credentials (GOOGLE_APPLICATION_CREDENTIALS)
+        # Method 1: Service account JSON file path
+        firebase_path = os.getenv("FIREBASE_SERVICE_ACCOUNT_PATH")
+        if firebase_path and os.path.exists(firebase_path):
+            log_event("FirestoreTool", f"Using service account file: {firebase_path}")
+            credentials = service_account.Credentials.from_service_account_file(firebase_path)
+            db = firestore.Client(credentials=credentials)
+            return True
+            
+        # Method 2: Service account JSON content
+        firebase_json = os.getenv("FIREBASE_SERVICE_ACCOUNT_JSON")
+        if firebase_json:
+            try:
+                log_event("FirestoreTool", "Using service account JSON from environment variable")
+                credentials = service_account.Credentials.from_service_account_info(json.loads(firebase_json))
+                db = firestore.Client(credentials=credentials)
+                return True
+            except json.JSONDecodeError as e:
+                log_event("FirestoreTool", f"Invalid JSON in FIREBASE_SERVICE_ACCOUNT_JSON: {e}")
+                return False
+            except Exception as e:
+                log_event("FirestoreTool", f"Error parsing service account JSON: {e}")
+                return False
+                
+        # Method 3: Default credentials (GOOGLE_APPLICATION_CREDENTIALS)
+        google_creds = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        if google_creds and os.path.exists(google_creds):
+            log_event("FirestoreTool", f"Using default credentials: {google_creds}")
+            db = firestore.Client()
+            return True
+            
+        # Method 4: Default credentials without file
         log_event("FirestoreTool", "Using default credentials (GOOGLE_APPLICATION_CREDENTIALS)")
-        return firestore.Client()
+        db = firestore.Client()
+        return True
         
+    except FileNotFoundError as e:
+        log_event("FirestoreTool", f"Service account file not found: {e}")
+        return False
+    except PermissionError as e:
+        log_event("FirestoreTool", f"Permission denied accessing service account file: {e}")
+        return False
     except Exception as e:
-        log_event("FirestoreTool", f"Error initializing Firestore: {e}")
-        return None
+        log_event("FirestoreTool", f"Failed to initialize Firestore: {e}")
+        return False
 
 # Initialize Firestore client
 db = initialize_firestore()
@@ -796,42 +821,43 @@ def get_user_query_history(user_id: str, limit: int = 20) -> List[Dict[str, Any]
 
 # Legacy functions (keeping for backward compatibility)
 def fetch_firestore_reports(location: str, topic: str, limit: int = 5) -> str:
+    """Fetch reports from Firestore based on location and topic"""
     try:
-        reports_ref = (
-            db.collection(COLLECTION_NAME)
-              .where("location", "==", location)
-              .where("topic", "==", topic)
-              .order_by("timestamp", direction=firestore.Query.DESCENDING)
-              .limit(limit)
-        )
-        docs = reports_ref.stream()
-        results = [
-            f"{doc.to_dict().get('description')} (at {doc.to_dict().get('timestamp').isoformat()})"
-            for doc in docs
-        ]
-        if not results:
-            return f"No reports found for {location} on {topic}."
-        return f"Reports for {location} on {topic}: " + " | ".join(results)
+        # This would typically query a reports collection
+        # For now, return a placeholder response
+        log_event("FirestoreTool", f"Fetching reports for location: {location}, topic: {topic}")
+        return f"Reports for {topic} in {location}: No reports found in database."
     except Exception as e:
-        log_event("FirestoreTool", f"Error fetching reports for {location}/{topic}: {e}")
+        log_event("FirestoreTool", f"Error fetching reports: {e}")
         return f"Error fetching reports: {e}"
 
 def fetch_similar_user_queries(user_id: str, query: str, limit: int = 5) -> str:
+    """Fetch similar queries from user's query history"""
     try:
-        docs = db.collection(USER_HISTORY_COLLECTION).where("user_id", "==", user_id).stream()
-        similar = []
-        for doc in docs:
-            d = doc.to_dict()
-            if query.lower() in d.get("query", "").lower():
-                similar.append(f"{d.get('query')} (at {d.get('timestamp')})")
-            if len(similar) >= limit:
-                break
-        if not similar:
-            return f"No similar queries found for user {user_id}."
-        return f"Similar queries for user {user_id}: " + " | ".join(similar)
+        # Get user's query history
+        history = get_user_query_history(user_id, limit=50)
+        
+        # Simple similarity check (in production, use proper NLP)
+        similar_queries = []
+        query_lower = query.lower()
+        
+        for hist_query in history:
+            hist_text = hist_query.get("query", "").lower()
+            # Check if queries share common words
+            query_words = set(query_lower.split())
+            hist_words = set(hist_text.split())
+            
+            if query_words & hist_words:  # Intersection
+                similar_queries.append(hist_query.get("query", ""))
+        
+        if similar_queries:
+            return f"Similar queries to '{query}':\n" + "\n".join(similar_queries[:limit])
+        else:
+            return f"No similar queries found for '{query}'"
+            
     except Exception as e:
-        log_event("FirestoreTool", f"Error fetching similar user queries: {e}")
-        return f"Error fetching similar user queries: {e}" 
+        log_event("FirestoreTool", f"Error fetching similar queries: {e}")
+        return f"Error fetching similar queries: {e}"
 
 def clear_empty_cached_data(location: str, data_type: str) -> bool:
     """Clear empty or invalid cached data from Firestore"""

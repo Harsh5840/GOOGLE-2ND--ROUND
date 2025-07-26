@@ -179,36 +179,62 @@ def upload_event_photo(
         }
 
 def get_all_event_photos() -> List[Dict]:
-    """Get all uploaded event photos with their metadata (from local file for now)"""
+    """Get all uploaded event photos with their metadata from Firestore"""
     try:
-        # For now, return from local file
-        # TODO: Implement Firestore retrieval
-        metadata = load_metadata()
+        from tools.firestore import db, EVENT_PHOTOS_COLLECTION
         
-        # Add file URL for frontend access
-        for photo in metadata:
-            photo["file_url"] = f"/uploads/event_photos/{photo['filename']}"
+        # Get photos from Firestore
+        photos_ref = db.collection(EVENT_PHOTOS_COLLECTION).order_by("upload_timestamp", direction="desc")
+        docs = photos_ref.stream()
         
-        return metadata
+        photos = []
+        for doc in docs:
+            photo_data = doc.to_dict()
+            # Add file URL for frontend access
+            photo_data["file_url"] = f"/uploads/event_photos/{photo_data.get('filename', '')}"
+            photos.append(photo_data)
+        
+        return photos
         
     except Exception as e:
-        log_event("ImageUpload", f"Error retrieving event photos: {str(e)}")
-        return []
+        log_event("ImageUpload", f"Error retrieving event photos from Firestore: {str(e)}")
+        # Fallback to local file if Firestore fails
+        try:
+            metadata = load_metadata()
+            for photo in metadata:
+                photo["file_url"] = f"/uploads/event_photos/{photo['filename']}"
+            return metadata
+        except Exception as fallback_error:
+            log_event("ImageUpload", f"Error with fallback to local file: {str(fallback_error)}")
+            return []
 
 def get_event_photo_by_id(photo_id: str) -> Optional[Dict]:
-    """Get a specific event photo by ID (from local file for now)"""
+    """Get a specific event photo by ID from Firestore"""
     try:
-        # For now, search in local file
-        # TODO: Implement Firestore retrieval
-        metadata = load_metadata()
+        from tools.firestore import db, EVENT_PHOTOS_COLLECTION
         
-        for photo in metadata:
-            if photo["id"] == photo_id:
-                photo["file_url"] = f"/uploads/event_photos/{photo['filename']}"
-                return photo
+        # Get photo from Firestore
+        photo_ref = db.collection(EVENT_PHOTOS_COLLECTION).document(photo_id)
+        doc = photo_ref.get()
+        
+        if doc.exists:
+            photo_data = doc.to_dict()
+            # Add file URL for frontend access
+            photo_data["file_url"] = f"/uploads/event_photos/{photo_data.get('filename', '')}"
+            return photo_data
         
         return None
         
     except Exception as e:
-        log_event("ImageUpload", f"Error retrieving event photo {photo_id}: {str(e)}")
-        return None 
+        log_event("ImageUpload", f"Error retrieving event photo {photo_id} from Firestore: {str(e)}")
+        # Fallback to local file if Firestore fails
+        try:
+            metadata = load_metadata()
+            for photo in metadata:
+                if photo["id"] == photo_id:
+                    photo["file_url"] = f"/uploads/event_photos/{photo['filename']}"
+                    return photo
+            return None
+        except Exception as fallback_error:
+            log_event("ImageUpload", f"Error with fallback to local file: {str(fallback_error)}")
+            return None 

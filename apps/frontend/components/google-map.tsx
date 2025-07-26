@@ -490,8 +490,8 @@ export default function GoogleMap({
     // Prevent duplicate script tags
     if (!document.querySelector('script[data-google-maps]')) {
       const script = document.createElement("script")
-      // TODO: Replace 'YOUR_API_KEY_HERE' with your actual Google Maps API key
-      script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyAabmFAVOqMWF96Yui6THYrkToNgrbNQXs&callback=initMap&libraries=places&v=weekly`
+      const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyAabmFAVOqMWF96Yui6THYrkToNgrbNQXs'
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=initMap&libraries=places&v=weekly`
       script.async = true
       script.defer = true
       script.setAttribute("data-google-maps", "true")

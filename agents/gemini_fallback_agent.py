@@ -32,6 +32,8 @@ async def run_gemini_fallback_agent(query: str, user_id: str = "testuser", sessi
             for part in event.content.parts:
                 if hasattr(part, 'text'):
                     result += part.text
-    print("DEBUG: Final result before return:", repr(result))
+    
+    from shared.utils.logger import log_event
+    log_event("GeminiFallback", f"Generated response for user {user_id}: {len(result)} characters")
     return result.strip()
 

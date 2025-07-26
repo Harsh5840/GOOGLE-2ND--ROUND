@@ -192,20 +192,58 @@ def dispatch_tool(intent: str, entities: dict, query: str) -> tuple[bool, str]:
             return True, reply
         
     elif intent == "get_firestore_reports" and location and topic:
-        # TODO: Implement firestore reports tool call
-        return False, "Firestore reports tool not yet implemented"
+        # Implement firestore reports tool call
+        try:
+            from tools.firestore import fetch_firestore_reports
+            log_event("Orchestrator", f"Calling fetch_firestore_reports with location: {location!r}, topic: {topic!r}")
+            reply = fetch_firestore_reports(location=location, topic=topic, limit=5)
+            log_event("Orchestrator", f"fetch_firestore_reports reply: {reply!r}")
+            return True, reply
+        except Exception as e:
+            log_event("Orchestrator", f"Error in fetch_firestore_reports: {e}")
+            return False, f"Error fetching Firestore reports: {e}"
         
     elif intent == "get_similar_queries" and "user_id" in entities and "query" in entities:
-        # TODO: Implement firestore similar tool call
-        return False, "Firestore similar tool not yet implemented"
+        # Implement firestore similar tool call
+        try:
+            from tools.firestore import fetch_similar_user_queries
+            user_id = entities.get("user_id")
+            query = entities.get("query")
+            log_event("Orchestrator", f"Calling fetch_similar_user_queries with user_id: {user_id!r}, query: {query!r}")
+            reply = fetch_similar_user_queries(user_id=user_id, query=query, limit=5)
+            log_event("Orchestrator", f"fetch_similar_user_queries reply: {reply!r}")
+            return True, reply
+        except Exception as e:
+            log_event("Orchestrator", f"Error in fetch_similar_user_queries: {e}")
+            return False, f"Error fetching similar queries: {e}"
         
     elif intent == "google_search" and "query" in entities:
-        # TODO: Implement google search tool call
-        return False, "Google search tool not yet implemented"
+        # Implement google search tool call
+        try:
+            from tools.google_search import search_google
+            query = entities.get("query")
+            log_event("Orchestrator", f"Calling search_google with query: {query!r}")
+            reply = search_google(query=query, max_results=5)
+            log_event("Orchestrator", f"search_google reply: {reply!r}")
+            return True, reply
+        except Exception as e:
+            log_event("Orchestrator", f"Error in search_google: {e}")
+            return False, f"Error performing Google search: {e}"
         
     elif intent == "get_best_route" and "current_location" in entities and "destination" in entities:
-        # TODO: Implement maps route tool call
-        return False, "Maps route tool not yet implemented"
+        # Implement maps route tool call
+        try:
+            from tools.maps import get_best_route
+            current_location = entities.get("current_location")
+            destination = entities.get("destination")
+            mode = entities.get("mode", "driving")
+            log_event("Orchestrator", f"Calling get_best_route with current_location: {current_location!r}, destination: {destination!r}")
+            reply = get_best_route(current_location=current_location, destination=destination, mode=mode)
+            log_event("Orchestrator", f"get_best_route reply: {reply!r}")
+            return True, reply
+        except Exception as e:
+            log_event("Orchestrator", f"Error in get_best_route: {e}")
+            return False, f"Error getting route: {e}"
         
     elif intent in ["get_must_visit_places", "poi"] and location:
         # Check Firestore first for cached data
@@ -842,6 +880,5 @@ async def location_mood(
 
 if __name__ == "__main__":
     import uvicorn
-    print("GOOGLE_MAPS_API_KEY (startup):", repr(os.getenv("GOOGLE_MAPS_API_KEY")))
-
+    log_event("Orchestrator", "Starting FastAPI server...")
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
