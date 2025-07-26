@@ -4,8 +4,6 @@ from dotenv import load_dotenv
 from shared.utils.logger import log_event
 
 load_dotenv()
-GOOGLE_SEARCH_API_KEY = os.getenv("GOOGLE_SEARCH_API_KEY")
-GOOGLE_SEARCH_ENGINE_ID = os.getenv("GOOGLE_SEARCH_ENGINE_ID")
 
 def google_search(query: str, num_results: int = 5) -> list:
     url = (
