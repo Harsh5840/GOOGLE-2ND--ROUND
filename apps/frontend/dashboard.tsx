@@ -57,7 +57,7 @@ import ReportModal from "./components/ReportModal"
 import PhotoUpload from "./components/PhotoUpload"
 import { getSeverityColor, formatTimeAgo } from "./lib/utils"
 
-import { sendChatMessage, getLocationMood, getLocationMoodWithDisplay, getBestRouteWithMood, getMustVisitPlacesWithMood } from "@/lib/api"
+import { sendChatMessage, getLocationMoodWithDisplay, getBestRouteWithMood, getMustVisitPlacesWithMood } from "@/lib/api"
 import { ChatMessage } from "@/types/chat"
 import LoginButton from "./components/LoginButton";
 
@@ -365,7 +365,7 @@ export default function UrbanPulseDashboard() {
   useEffect(() => {
     setMoodLoading(true)
     setMoodError(null)
-    getLocationMood("New York City")
+            getLocationMoodWithDisplay("New York City")
       .then((data) => {
         setLocationMood(data)
         setMoodLoading(false)

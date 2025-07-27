@@ -4,11 +4,11 @@ import { Button } from "@/components/ui/button"
 import { TrendingUp, Filter, Search, Podcast, Camera } from "lucide-react"
 import EventFeed from "./EventFeed"
 import Link from "next/link"
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Slider } from "@/components/ui/slider"
 import { useState } from "react"
 import { generatePodcast, pollPodcastJob, getPodcastAudioUrl } from "@/lib/api"
-import ThrobbingAudioCircle from "./ThrobbingAudioCircle";
+import ThrobbingAudioCircle from "./ThrobbingAudioCircle"
 
 interface SidebarProps {
   isMobile: boolean
@@ -60,7 +60,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   }
 
   return (
-    <>
+    <React.Fragment>
       {/* Mobile Sidebar Overlay */}
       {isMobile && sidebarOpen && (
         <div
@@ -71,7 +71,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Enhanced Left Sidebar with Social Feed */}
       <aside
-        className={`$${
+        className={`${
           isMobile
             ? `fixed left-0 top-16 w-80 z-50 transform transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} ${mobileChatExpanded ? "bottom-80" : "bottom-16"}`
             : "w-80 lg:w-96"
@@ -120,39 +120,42 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </Button>
               </Link>
             </div>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Generate City News Podcast</DialogTitle>
-                    <DialogDescription>
-                      Select the length (in minutes) for your podcast. Default is 2 minutes.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="flex flex-col items-center gap-4 mt-4 w-full">
-                    {podcastAudioUrl ? (
-                      <ThrobbingAudioCircle src={podcastAudioUrl} />
-                    ) : (
-                      <>
-                        <span className="font-medium">Length: <span id="podcast-length-value">{podcastLength}</span> min</span>
-                        <Slider
-                          min={1}
-                          max={10}
-                          step={1}
-                          value={[podcastLength]}
-                          onValueChange={val => {
-                            if (val && val[0]) setPodcastLength(val[0])
-                          }}
-                          className="w-3/4"
-                        />
-                        <Button onClick={handleGeneratePodcast} disabled={podcastLoading} className="w-full mt-2">
-                          {podcastLoading ? "Generating..." : "Generate Podcast"}
-                        </Button>
-                        {podcastError && <div className="text-red-600 text-sm mt-2">{podcastError}</div>}
-                      </>
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
+            
+            {/* Podcast Dialog Content */}
+            <Dialog open={showPodcastDialog} onOpenChange={setShowPodcastDialog}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Generate City News Podcast</DialogTitle>
+                  <DialogDescription>
+                    Select the length (in minutes) for your podcast. Default is 2 minutes.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex flex-col items-center gap-4 mt-4 w-full">
+                  {podcastAudioUrl ? (
+                    <ThrobbingAudioCircle src={podcastAudioUrl} />
+                  ) : (
+                    <>
+                      <span className="font-medium">Length: <span id="podcast-length-value">{podcastLength}</span> min</span>
+                      <Slider
+                        min={1}
+                        max={10}
+                        step={1}
+                        value={[podcastLength]}
+                        onValueChange={val => {
+                          if (val && val[0]) setPodcastLength(val[0])
+                        }}
+                        className="w-3/4"
+                      />
+                      <Button onClick={handleGeneratePodcast} disabled={podcastLoading} className="w-full mt-2">
+                        {podcastLoading ? "Generating..." : "Generate Podcast"}
+                      </Button>
+                      {podcastError && <div className="text-red-600 text-sm mt-2">{podcastError}</div>}
+                    </>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
+
             {/* Enhanced Search */}
             <div className="relative mb-6 md:mb-8 group">
               <Search className="absolute left-4 md:left-5 top-1/2 transform -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors duration-300" />
@@ -201,7 +204,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
         </div>
       </aside>
-    </>
+    </React.Fragment>
   )
 }
 
