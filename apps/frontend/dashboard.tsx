@@ -363,9 +363,13 @@ export default function UrbanPulseDashboard() {
   }, [])
 
   useEffect(() => {
+    // Temporarily disable mood map calls until backend is fully deployed
+    setMoodLoading(false)
+    setMoodError(null)
+    /*
     setMoodLoading(true)
     setMoodError(null)
-            getLocationMoodWithDisplay("New York City")
+    getLocationMoodWithDisplay("New York City")
       .then((data) => {
         setLocationMood(data)
         setMoodLoading(false)
@@ -374,6 +378,7 @@ export default function UrbanPulseDashboard() {
         setMoodError("Could not fetch city mood data.")
         setMoodLoading(false)
       })
+    */
   }, [])
 
   // Auto-scroll chat messages
@@ -449,7 +454,7 @@ export default function UrbanPulseDashboard() {
       console.error("Error sending message:", error)
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        text: "Sorry, I encountered an error. Please try again.",
+        text: "Backend services are being deployed. Please try again in a few minutes.",
         sender: "bot",
         timestamp: new Date(),
       }
