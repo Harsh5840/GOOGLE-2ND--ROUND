@@ -66,5 +66,60 @@ async def proxy_podcast_file(filename: str):
         content = response.content
         return Response(content, media_type="audio/mpeg")
 
+# Gemini Photo Classification Routes
+@app.post("/api/v1/classify_photo")
+async def proxy_classify_photo(request: Request):
+    """Proxy photo classification requests to orchestrator"""
+    form_data = await request.form()
+    
+    # Forward the multipart form data to orchestrator
+    files = {}
+    data = {}
+    
+    for key, value in form_data.items():
+        if hasattr(value, 'read'):  # It's a file
+            files[key] = (value.filename, await value.read(), value.content_type)
+        else:  # It's regular form data
+            data[key] = value
+    
+    async with httpx.AsyncClient(timeout=HTTPX_TIMEOUT) as client:
+        response = await client.post(f"{ORCHESTRATOR_URL}/classify_photo", files=files, data=data)
+    return response.json()
+
+@app.post("/api/v1/submit_classified_report")
+async def proxy_submit_classified_report(request: Request):
+    """Proxy classified report submission to orchestrator"""
+    form_data = await request.form()
+    
+    # Forward the multipart form data to orchestrator
+    files = {}
+    data = {}
+    
+    for key, value in form_data.items():
+        if hasattr(value, 'read'):  # It's a file
+            files[key] = (value.filename, await value.read(), value.content_type)
+        else:  # It's regular form data
+            data[key] = value
+    
+    async with httpx.AsyncClient(timeout=HTTPX_TIMEOUT) as client:
+        response = await client.post(f"{ORCHESTRATOR_URL}/submit_classified_report", files=files, data=data)
+    return response.json()
+
+@app.get("/api/v1/user_reports")
+async def proxy_user_reports(request: Request):
+    """Proxy user reports requests to orchestrator"""
+    params = dict(request.query_params)
+    async with httpx.AsyncClient(timeout=HTTPX_TIMEOUT) as client:
+        response = await client.get(f"{ORCHESTRATOR_URL}/user_reports", params=params)
+    return response.json()
+
+@app.get("/api/v1/report-image/{report_id}")
+async def proxy_report_image(report_id: str):
+    """Proxy report image requests to orchestrator"""
+    async with httpx.AsyncClient(timeout=HTTPX_TIMEOUT) as client:
+        response = await client.get(f"{ORCHESTRATOR_URL}/report-image/{report_id}")
+        content = response.content
+        return Response(content, media_type="image/jpeg")
+
 if __name__ == "__main__":
     uvicorn.run("server:app", host="0.0.0.0", port=5000, reload=True)

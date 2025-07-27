@@ -57,7 +57,7 @@ import ReportModal from "./components/ReportModal"
 import PhotoUpload from "./components/PhotoUpload"
 import { getSeverityColor, formatTimeAgo } from "./lib/utils"
 
-import { sendChatMessage, getLocationMoodWithDisplay, getBestRouteWithMood, getMustVisitPlacesWithMood } from "@/lib/api"
+import { sendChatMessage, getLocationMoodWithDisplay, getBestRouteWithMood, getMustVisitPlacesWithMood, getAllUserReports } from "@/lib/api"
 import { ChatMessage } from "@/types/chat"
 import LoginButton from "./components/LoginButton";
 
@@ -311,6 +311,8 @@ export default function UrbanPulseDashboard() {
     image: null as File | null,
   })
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
+  const [userReports, setUserReports] = useState<any[]>([])
+  const [loadingReports, setLoadingReports] = useState(false)
   const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [likedEvents, setLikedEvents] = useState<Set<number>>(new Set())
@@ -359,6 +361,36 @@ export default function UrbanPulseDashboard() {
     return () => {
       clearTimeout(loadingTimer)
       clearInterval(timer)
+    }
+  }, [])
+
+  // Fetch user reports on component mount
+  useEffect(() => {
+    const fetchUserReports = async () => {
+      setLoadingReports(true)
+      try {
+        const reports = await getAllUserReports()
+        setUserReports(reports)
+      } catch (error) {
+        console.error('Error fetching user reports:', error)
+      } finally {
+        setLoadingReports(false)
+      }
+    }
+
+    fetchUserReports()
+  }, [])
+
+  // Listen for new user reports from ReportModal
+  useEffect(() => {
+    const handleNewUserReport = (event: CustomEvent) => {
+      const newReport = event.detail
+      setUserReports(prev => [newReport, ...prev])
+    }
+
+    window.addEventListener('newUserReport', handleNewUserReport as EventListener)
+    return () => {
+      window.removeEventListener('newUserReport', handleNewUserReport as EventListener)
     }
   }, [])
 
@@ -659,6 +691,8 @@ export default function UrbanPulseDashboard() {
               isDarkMode={isDarkMode}
               zones={mapZones}
               locationData={locationData}
+              userReports={userReports}
+              loadingReports={loadingReports}
             />
             
             {/* Floating Camera Icon for User Reports */}

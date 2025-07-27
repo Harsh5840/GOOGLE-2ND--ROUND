@@ -71,6 +71,8 @@ interface MapProps {
     places?: any[]
     summary?: string
   }
+  userReports?: any[]
+  loadingReports?: boolean
 }
 
 export default function GoogleMap({
@@ -81,6 +83,8 @@ export default function GoogleMap({
   isDarkMode,
   zones = [],
   locationData,
+  userReports = [],
+  loadingReports = false,
 }: MapProps) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
@@ -827,6 +831,105 @@ export default function GoogleMap({
       })
     }
 
+    // Add user report markers
+    if (userReports && userReports.length > 0) {
+      userReports.forEach((report) => {
+        if (report.latitude && report.longitude) {
+          const position = {
+            lat: parseFloat(report.latitude),
+            lng: parseFloat(report.longitude)
+          }
+
+          // Create custom marker icon for user reports
+          const markerIcon = {
+            url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+              <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="userReportGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" style="stop-color:#3b82f6;stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:#1d4ed8;stop-opacity:1" />
+                  </linearGradient>
+                  <filter id="userReportShadow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="rgba(59,130,246,0.4)"/>
+                  </filter>
+                </defs>
+                <circle cx="24" cy="24" r="20" fill="url(#userReportGrad)" stroke="white" stroke-width="3" filter="url(#userReportShadow)"/>
+                <circle cx="24" cy="24" r="10" fill="white" opacity="0.9"/>
+                <text x="24" y="28" text-anchor="middle" font-size="14" font-weight="bold" fill="#3b82f6">📸</text>
+              </svg>
+            `)}`,
+            scaledSize: new window.google.maps.Size(48, 48),
+            anchor: new window.google.maps.Point(24, 48)
+          }
+
+          const marker = new window.google.maps.Marker({
+            position,
+            map: mapInstanceRef.current,
+            icon: markerIcon,
+            title: report.title || 'User Report',
+            optimized: true,
+            zIndex: 1500, // Between events and locations
+          })
+
+          marker.addListener("click", () => {
+            const severityColor = 
+              report.severity === 'critical' ? '#dc2626' :
+              report.severity === 'high' ? '#ea580c' :
+              report.severity === 'medium' ? '#ca8a04' :
+              '#16a34a'
+
+            const content = `
+              <div style="padding: 20px; max-width: 320px; font-family: system-ui, -apple-system, sans-serif; border-radius: 16px; box-shadow: 0 4px 24px #0006; border: 2px solid #3b82f6; background: #fff; color: #111827;">
+                <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                  <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #1d4ed8); display: flex; align-items: center; justify-content: center; color: white; font-size: 18px; margin-right: 12px; box-shadow: 0 2px 8px rgba(59,130,246,0.3);">
+                    📸
+                  </div>
+                  <div>
+                    <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #111827;">${report.title || 'User Report'}</h3>
+                    <p style="margin: 2px 0 0 0; font-size: 12px; color: #6b7280;">Citizen Report • ${report.timestamp ? new Date(report.timestamp).toLocaleDateString() : 'Recent'}</p>
+                  </div>
+                </div>
+                
+                ${report.image_url ? `
+                  <div style="margin-bottom: 12px; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <img src="${report.image_url}" alt="Report Image" style="width: 100%; height: 150px; object-fit: cover; display: block;" />
+                  </div>
+                ` : ''}
+                
+                <p style="margin: 0 0 12px 0; font-size: 14px; line-height: 1.4; color: #374151;">${report.summary || report.description || 'No description available.'}</p>
+                
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 12px; font-weight: 600; text-transform: uppercase; padding: 4px 8px; border-radius: 12px; background: ${severityColor}20; color: ${severityColor};">
+                      ${report.severity || 'medium'} priority
+                    </span>
+                    <span style="font-size: 12px; font-weight: 600; text-transform: capitalize; padding: 4px 8px; border-radius: 12px; background: #3b82f620; color: #3b82f6;">
+                      ${report.category || 'general'}
+                    </span>
+                  </div>
+                </div>
+                
+                ${report.confidence ? `
+                  <div style="margin-top: 8px; padding: 8px; background: #f8fafc; border-radius: 6px; border-left: 3px solid #3b82f6;">
+                    <p style="margin: 0; font-size: 11px; color: #6b7280;">
+                      <strong>AI Analysis:</strong> ${Math.round(report.confidence * 100)}% confidence
+                    </p>
+                  </div>
+                ` : ''}
+              </div>
+            `
+
+            if (infoWindowRef.current) {
+              infoWindowRef.current.setContent(content)
+              infoWindowRef.current.open(mapInstanceRef.current, marker)
+            }
+          })
+
+          markersRef.current.push(marker)
+        }
+      })
+    }
+
     // Add zone overlays with mobile optimizations
     zones.forEach((zone) => {
       const polygon = new window.google.maps.Polygon({
@@ -865,7 +968,7 @@ export default function GoogleMap({
         }
       })
     })
-  }, [events, zones, locationData, isDarkMode, mapError, onEventSelect])
+  }, [events, zones, locationData, isDarkMode, mapError, onEventSelect, userReports, loadingReports])
 
   // If there's an error, show the fallback map
   if (mapError) {
