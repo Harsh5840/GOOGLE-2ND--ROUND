@@ -89,6 +89,70 @@ export async function submitReport(reportData: {
   }
 }
 
+// Gemini Photo Classification API Functions
+export async function classifyPhoto(file: File, latitude: number, longitude: number, userId: string): Promise<any> {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('latitude', latitude.toString());
+    formData.append('longitude', longitude.toString());
+    formData.append('user_id', userId);
+
+    const response = await axios.post(`${API_BASE_URL}/classify_photo`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error classifying photo:', error);
+    throw error;
+  }
+}
+
+export async function submitClassifiedReport(
+  file: File,
+  latitude: number,
+  longitude: number,
+  userId: string,
+  title: string,
+  description: string,
+  category: string,
+  severity: string
+): Promise<any> {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('latitude', latitude.toString());
+    formData.append('longitude', longitude.toString());
+    formData.append('user_id', userId);
+    formData.append('title', title);
+    formData.append('description', description);
+    formData.append('category', category);
+    formData.append('severity', severity);
+
+    const response = await axios.post(`${API_BASE_URL}/submit_classified_report`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error submitting classified report:', error);
+    throw error;
+  }
+}
+
+export async function getAllUserReports(limit: number = 100): Promise<any[]> {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/user_reports?limit=${limit}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error getting user reports:', error);
+    throw error;
+  }
+}
+
 export async function getEvents(filters?: {
   type?: string;
   location?: string;

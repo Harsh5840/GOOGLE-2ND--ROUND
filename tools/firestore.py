@@ -967,4 +967,169 @@ def clear_empty_cached_data(location: str, data_type: str) -> bool:
 
     except Exception as e:
         log_event("FirestoreTool", f"Error clearing empty cached data for {location}, type {data_type}: {e}")
-        return False 
+        return False
+
+# User Report Submission for Gemini-classified photos
+def submit_user_report(user_id: str, title: str, description: str, category: str, 
+                      severity: str, latitude: float, longitude: float, 
+                      image_data: bytes) -> Dict[str, Any]:
+    """Submit a user report with classified photo to Firestore."""
+    try:
+        import uuid
+        import base64
+        from datetime import datetime
+        
+        # Generate unique report ID
+        report_id = str(uuid.uuid4())
+        
+        # Convert image to base64 for storage
+        image_b64 = base64.b64encode(image_data).decode('utf-8')
+        
+        # Create report document
+        report_data = {
+            "report_id": report_id,
+            "user_id": user_id,
+            "title": title,
+            "description": description,
+            "category": category,
+            "severity": severity,
+            "latitude": latitude,
+            "longitude": longitude,
+            "image_data": image_b64,
+            "image_url": f"/api/report-image/{report_id}",  # URL for serving the image
+            "timestamp": datetime.utcnow(),
+            "status": "submitted",
+            "classification_method": "gemini_vision",
+            "created_at": datetime.utcnow(),
+            "updated_at": datetime.utcnow()
+        }
+        
+        # Store in Firestore
+        db.collection("user_reports").document(report_id).set(report_data)
+        
+        # Also store in user's personal collection for easy retrieval
+        user_report_data = {
+            "report_id": report_id,
+            "title": title,
+            "description": description,
+            "category": category,
+            "severity": severity,
+            "latitude": latitude,
+            "longitude": longitude,
+            "timestamp": datetime.utcnow(),
+            "status": "submitted"
+        }
+        
+        db.collection("users").document(user_id).collection("reports").document(report_id).set(user_report_data)
+        
+        log_event("FirestoreTool", f"Successfully submitted user report {report_id} for user {user_id}")
+        
+        return {
+            "success": True,
+            "report_id": report_id,
+            "message": "Report submitted successfully",
+            "timestamp": datetime.utcnow().isoformat(),
+            "image_url": f"/api/report-image/{report_id}"
+        }
+        
+    except Exception as e:
+        log_event("FirestoreTool", f"Error submitting user report: {str(e)}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+def get_user_reports(user_id: str, limit: int = 50) -> List[Dict[str, Any]]:
+    """Get user's submitted reports."""
+    try:
+        reports = []
+        docs = db.collection("users").document(user_id).collection("reports").order_by("timestamp", direction=firestore.Query.DESCENDING).limit(limit).stream()
+        
+        for doc in docs:
+            report_data = doc.to_dict()
+            reports.append(report_data)
+        
+        log_event("FirestoreTool", f"Retrieved {len(reports)} reports for user {user_id}")
+        return reports
+        
+    except Exception as e:
+        log_event("FirestoreTool", f"Error getting user reports for {user_id}: {str(e)}")
+        return []
+
+def get_all_user_reports(limit: int = 100) -> List[Dict[str, Any]]:
+    """Get all user reports for map display."""
+    try:
+        reports = []
+        docs = db.collection("user_reports").order_by("timestamp", direction=firestore.Query.DESCENDING).limit(limit).stream()
+        
+        for doc in docs:
+            report_data = doc.to_dict()
+            # Don't include full image data in list response for performance
+            if "image_data" in report_data:
+                del report_data["image_data"]
+            reports.append(report_data)
+        
+        log_event("FirestoreTool", f"Retrieved {len(reports)} user reports for map display")
+        return reports
+        
+    except Exception as e:
+        log_event("FirestoreTool", f"Error getting all user reports: {str(e)}")
+        return []
+
+def get_report_image(report_id: str) -> Optional[bytes]:
+    """Get report image data by report ID."""
+    try:
+        doc = db.collection("user_reports").document(report_id).get()
+        
+        if doc.exists:
+            report_data = doc.to_dict()
+            image_b64 = report_data.get("image_data")
+            
+            if image_b64:
+                import base64
+                return base64.b64decode(image_b64)
+        
+        return None
+        
+    except Exception as e:
+        log_event("FirestoreTool", f"Error getting report image {report_id}: {str(e)}")
+        return None
+
+def get_all_user_reports(limit: int = 100) -> List[Dict[str, Any]]:
+    """Get all user reports for map display."""
+    try:
+        reports = []
+        docs = db.collection("user_reports").order_by("timestamp", direction=firestore.Query.DESCENDING).limit(limit).stream()
+        
+        for doc in docs:
+            report_data = doc.to_dict()
+            # Don't include full image data in list response for performance
+            if "image_data" in report_data:
+                del report_data["image_data"]
+            reports.append(report_data)
+        
+        log_event("FirestoreTool", f"Retrieved {len(reports)} user reports for map display")
+        return reports
+        
+    except Exception as e:
+        log_event("FirestoreTool", f"Error getting all user reports: {str(e)}")
+        return []
+
+def get_report_image(report_id: str) -> Optional[bytes]:
+    """Get report image data by report ID."""
+    try:
+        doc = db.collection("user_reports").document(report_id).get()
+        
+        if doc.exists:
+            report_data = doc.to_dict()
+            image_b64 = report_data.get("image_data")
+            
+            if image_b64:
+                import base64
+                return base64.b64decode(image_b64)
+        
+        return None
+        
+    except Exception as e:
+        log_event("FirestoreTool", f"Error getting report image {report_id}: {str(e)}")
+        return None

@@ -57,7 +57,7 @@ import ReportModal from "./components/ReportModal"
 import PhotoUpload from "./components/PhotoUpload"
 import { getSeverityColor, formatTimeAgo } from "./lib/utils"
 
-import { sendChatMessage, getLocationMood, getLocationMoodWithDisplay, getBestRouteWithMood, getMustVisitPlacesWithMood } from "@/lib/api"
+import { sendChatMessage, getLocationMoodWithDisplay, getBestRouteWithMood, getMustVisitPlacesWithMood } from "@/lib/api"
 import { ChatMessage } from "@/types/chat"
 import LoginButton from "./components/LoginButton";
 
@@ -295,7 +295,7 @@ export default function UrbanPulseDashboard() {
   const [selectedEvent, setSelectedEvent] = useState<CityEvent | null>(null)
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
-      id: 1,
+      id: "1",
       type: "bot",
       message: "Hi! I'm your city assistant. Ask me anything about traffic, events, or city services.",
       timestamp: new Date(Date.now() - 60000),
@@ -365,12 +365,12 @@ export default function UrbanPulseDashboard() {
   useEffect(() => {
     setMoodLoading(true)
     setMoodError(null)
-    getLocationMood("New York City")
-      .then((data) => {
+    getLocationMoodWithDisplay("Bangalore")
+      .then((data: any) => {
         setLocationMood(data)
         setMoodLoading(false)
       })
-      .catch((err) => {
+      .catch((err: any) => {
         setMoodError("Could not fetch city mood data.")
         setMoodLoading(false)
       })
@@ -599,38 +599,7 @@ export default function UrbanPulseDashboard() {
       />
 
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Mood and Must-Visit Section */}
-        <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-20 w-full max-w-2xl px-4">
-          {moodLoading && (
-            <div className="bg-blue-100 text-blue-800 rounded-xl p-4 mb-4 shadow font-semibold text-center">
-              Loading city mood and must-visit places...
-            </div>
-          )}
-          {moodError && (
-            <div className="bg-red-100 text-red-800 rounded-xl p-4 mb-4 shadow font-semibold text-center">
-              {moodError}
-            </div>
-          )}
-          {locationMood && (
-            <div className="bg-white/80 dark:bg-gray-900/80 rounded-xl p-4 mb-4 shadow">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
-                <div>
-                  <div className="text-lg font-bold text-blue-700 dark:text-blue-300">City Mood</div>
-                  <div className="text-2xl font-black mb-1">{locationMood.mood_label || "Unknown"}</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-300">Score: {locationMood.mood_score ?? "-"}</div>
-                </div>
-                <div>
-                  <div className="text-lg font-bold text-blue-700 dark:text-blue-300">Must-Visit Places</div>
-                  <ul className="list-disc pl-5 text-base">
-                    {(locationMood.must_visit_places || []).map((place: any, idx: number) => (
-                      <li key={idx}>{place}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+
         {/* Mobile Sidebar Overlay */}
         {isMobile && sidebarOpen && (
           <div
@@ -691,6 +660,19 @@ export default function UrbanPulseDashboard() {
               zones={mapZones}
               locationData={locationData}
             />
+            
+            {/* Floating Camera Icon for User Reports */}
+            <Button
+              onClick={() => setShowReportModal(true)}
+              className={`absolute bottom-4 md:bottom-6 right-4 md:right-6 z-20 w-12 h-12 md:w-14 md:h-14 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 active:scale-95 ${
+                isDarkMode
+                  ? "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-900/50"
+                  : "bg-blue-500 hover:bg-blue-600 text-white shadow-blue-500/30"
+              }`}
+              title="Report an Event"
+            >
+              <Camera className="w-5 h-5 md:w-6 md:h-6" />
+            </Button>
           </div>
         </div>
 

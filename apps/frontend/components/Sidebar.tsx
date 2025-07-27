@@ -1,14 +1,13 @@
 import React from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { TrendingUp, Filter, Search, Podcast, Camera } from "lucide-react"
+import { TrendingUp, Filter, Search, Podcast } from "lucide-react"
 import EventFeed from "./EventFeed"
-import Link from "next/link"
-import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Slider } from "@/components/ui/slider"
 import { useState } from "react"
 import { generatePodcast, pollPodcastJob, getPodcastAudioUrl } from "@/lib/api"
-import ThrobbingAudioCircle from "./ThrobbingAudioCircle";
+import ThrobbingAudioCircle from "./ThrobbingAudioCircle"
 
 interface SidebarProps {
   isMobile: boolean
@@ -71,7 +70,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Enhanced Left Sidebar with Social Feed */}
       <aside
-        className={`$${
+        className={`${
           isMobile
             ? `fixed left-0 top-16 w-80 z-50 transform transition-transform duration-300 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} ${mobileChatExpanded ? "bottom-80" : "bottom-16"}`
             : "w-80 lg:w-96"
@@ -100,26 +99,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                     </span>
                   </Button>
                 </DialogTrigger>
-              </Dialog>
-            </div>
-
-            {/* Photo Dashboard Button */}
-            <div className="mb-6 flex justify-start">
-              <Link href="/event-dashboard">
-                <Button
-                  className={`gap-2 px-4 py-2 rounded-xl font-bold text-base shadow-lg transition-all duration-300 hover:scale-105 ${
-                    isDarkMode
-                      ? "bg-green-700/90 text-white hover:bg-green-800/90"
-                      : "bg-green-600/90 text-white hover:bg-green-700/90"
-                  }`}
-                >
-                  <span className="flex items-center">
-                    <Camera className="w-5 h-5 mr-2" />
-                    Photo Dashboard
-                  </span>
-                </Button>
-              </Link>
-            </div>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Generate City News Podcast</DialogTitle>
@@ -153,6 +132,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </DialogContent>
               </Dialog>
             </div>
+
             {/* Enhanced Search */}
             <div className="relative mb-6 md:mb-8 group">
               <Search className="absolute left-4 md:left-5 top-1/2 transform -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-gray-400 group-focus-within:text-blue-500 transition-colors duration-300" />

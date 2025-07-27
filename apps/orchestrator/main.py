@@ -587,6 +587,124 @@ async def get_aggregated_data_firestore_endpoint(location_name: str, hours: int 
         raise HTTPException(status_code=500, detail=str(e))
 
 # Event Photos Endpoints
+@app.post("/classify_photo", response_model=dict)
+async def classify_photo_endpoint(
+    file: UploadFile = File(...),
+    latitude: float = Form(...),
+    longitude: float = Form(...),
+    user_id: str = Form(...)
+):
+    """Classify uploaded photo using Gemini Vision API and return auto-generated title and description."""
+    try:
+        # Validate file type
+        if not file.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="File must be an image")
+        
+        # Read image data
+        image_data = await file.read()
+        
+        # Classify the photo using Gemini Vision
+        from tools.gemini_vision import classify_photo_with_gemini
+        classification_result = await classify_photo_with_gemini(image_data, latitude, longitude)
+        
+        return {
+            "success": True,
+            "title": classification_result["title"],
+            "description": classification_result["description"],
+            "category": classification_result["category"],
+            "severity": classification_result["severity"],
+            "confidence": classification_result["confidence"]
+        }
+            
+    except Exception as e:
+        log_event("Orchestrator", f"Error in classify_photo_endpoint: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/submit_classified_report", response_model=dict)
+async def submit_classified_report_endpoint(
+    file: UploadFile = File(...),
+    latitude: float = Form(...),
+    longitude: float = Form(...),
+    user_id: str = Form(...),
+    title: str = Form(...),
+    description: str = Form(...),
+    category: str = Form(...),
+    severity: str = Form(...)
+):
+    """Submit a classified photo report to Firestore and return report data for map display."""
+    try:
+        # Validate file type
+        if not file.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="File must be an image")
+        
+        # Read image data
+        image_data = await file.read()
+        
+        # Submit to Firestore with classification data
+        from tools.firestore import submit_user_report
+        report_result = submit_user_report(
+            user_id=user_id,
+            title=title,
+            description=description,
+            category=category,
+            severity=severity,
+            latitude=latitude,
+            longitude=longitude,
+            image_data=image_data
+        )
+        
+        if report_result["success"]:
+            return {
+                "success": True,
+                "report_id": report_result["report_id"],
+                "message": "Report submitted successfully",
+                "map_marker": {
+                    "id": report_result["report_id"],
+                    "title": title,
+                    "description": description,
+                    "category": category,
+                    "severity": severity,
+                    "latitude": latitude,
+                    "longitude": longitude,
+                    "user_id": user_id,
+                    "timestamp": report_result["timestamp"],
+                    "image_url": report_result["image_url"]
+                }
+            }
+        else:
+            raise HTTPException(status_code=500, detail=report_result["error"])
+            
+    except Exception as e:
+        log_event("Orchestrator", f"Error in submit_classified_report_endpoint: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/user_reports", response_model=List[dict])
+async def get_all_user_reports_endpoint(limit: int = 100):
+    """Get all user reports for map display."""
+    try:
+        from tools.firestore import get_all_user_reports
+        reports = get_all_user_reports(limit)
+        return reports
+    except Exception as e:
+        log_event("Orchestrator", f"Error getting all user reports: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/report-image/{report_id}")
+async def get_report_image_endpoint(report_id: str):
+    """Serve report image by ID."""
+    try:
+        from tools.firestore import get_report_image
+        from fastapi.responses import Response
+        
+        image_data = get_report_image(report_id)
+        if image_data:
+            return Response(content=image_data, media_type="image/jpeg")
+        else:
+            raise HTTPException(status_code=404, detail="Image not found")
+    except Exception as e:
+        log_event("Orchestrator", f"Error serving report image {report_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/upload_event_photo", response_model=UploadResponse)
 async def upload_event_photo_endpoint(
     file: UploadFile = File(...),
