@@ -64,7 +64,6 @@ interface MapProps {
   eventTypes: EventType[]
   isDarkMode: boolean
   zones?: Zone[]
-  onEventsUpdate?: () => void
 }
 
 export default function GoogleMap({
@@ -74,7 +73,6 @@ export default function GoogleMap({
   eventTypes,
   isDarkMode,
   zones = [],
-  onEventsUpdate,
 }: MapProps) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
@@ -474,17 +472,17 @@ export default function GoogleMap({
     // Set up global callback
     window.initMap = initMap
 
-         // Prevent duplicate script tags
-     if (!document.querySelector('script[data-google-maps]')) {
-       const script = document.createElement("script")
-       // TODO: Replace 'YOUR_API_KEY_HERE' with your actual Google Maps API key
-       script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyAabmFAVOqMWF96Yui6THYrkToNgrbNQXs&callback=initMap&libraries=places,marker&v=weekly&loading=async`
-       script.async = true
-       script.defer = true
-       script.setAttribute("data-google-maps", "true")
-       script.onerror = () => {
-         handleGoogleMapsError(new Error("Failed to load Google Maps script"))
-       }
+    // Prevent duplicate script tags
+    if (!document.querySelector('script[data-google-maps]')) {
+      const script = document.createElement("script")
+      // TODO: Replace 'YOUR_API_KEY_HERE' with your actual Google Maps API key
+      script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyAabmFAVOqMWF96Yui6THYrkToNgrbNQXs&callback=initMap&libraries=places&v=weekly`
+      script.async = true
+      script.defer = true
+      script.setAttribute("data-google-maps", "true")
+      script.onerror = () => {
+        handleGoogleMapsError(new Error("Failed to load Google Maps script"))
+      }
 
        script.onload = () => {
          // Additional check after script loads
@@ -590,6 +588,7 @@ export default function GoogleMap({
     // Add new markers with dedicated event type icons
     const isMobile = window.innerWidth < 768
     
+    // Add event markers
     events.forEach((event) => {
       const position = { lat: event.coordinates.lat, lng: event.coordinates.lng }
       
@@ -673,48 +672,45 @@ export default function GoogleMap({
               isDarkMode ? "color: #d1d5db;" : "color: #374151;"
             } line-height: 1.5; font-weight: 500;">${event.summary}</p>
             
-            <!-- Tags -->
-            <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: ${isMobile ? '12px' : '16px'};">
-              ${event.tags
-                .slice(0, 3)
-                .map(
-                  (tag) => `
-                <span style="background: ${
-                  isDarkMode ? "#374151" : "#f1f5f9"
-                }; color: ${
-                    isDarkMode ? "#9ca3af" : "#64748b"
-                  }; padding: 4px 8px; border-radius: 12px; font-size: ${isMobile ? '10px' : '11px'}; font-weight: 600;">#${tag}</span>
-              `
-                )
-                .join("")}
+            <!-- Engagement stats -->
+            <div style="display: flex; gap: ${isMobile ? '16px' : '24px'}; margin-bottom: ${isMobile ? '12px' : '16px'};">
+              <div style="display: flex; align-items: center; gap: 4px; font-size: ${isMobile ? '12px' : '13px'}; ${
+                isDarkMode ? "color: #9ca3af;" : "color: #6b7280;"
+              }">
+                <span style="font-size: ${isMobile ? '14px' : '16px'};">❤️</span>
+                ${event.likes}
+              </div>
+              <div style="display: flex; align-items: center; gap: 4px; font-size: ${isMobile ? '12px' : '13px'}; ${
+                isDarkMode ? "color: #9ca3af;" : "color: #6b7280;"
+              }">
+                <span style="font-size: ${isMobile ? '14px' : '16px'};">💬</span>
+                ${event.comments}
+              </div>
+              <div style="display: flex; align-items: center; gap: 4px; font-size: ${isMobile ? '12px' : '13px'}; ${
+                isDarkMode ? "color: #9ca3af;" : "color: #6b7280;"
+              }">
+                <span style="font-size: ${isMobile ? '14px' : '16px'};">📤</span>
+                ${event.shares}
+              </div>
             </div>
             
-            ${
-              event.image
-                ? `<img src="${event.image}" style="width: 100%; height: ${isMobile ? '120px' : '160px'}; object-fit: cover; border-radius: ${isMobile ? '12px' : '16px'}; margin-bottom: ${isMobile ? '12px' : '16px'}; box-shadow: 0 4px 12px rgba(0,0,0,0.1);" />`
-                : ""
-            }
-            
-            <!-- Social stats -->
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: ${isMobile ? '12px' : '16px'} 0; border-top: 2px solid ${
-              isDarkMode ? "#374151" : "#f1f5f9"
-            };">
-              <div style="display: flex; align-items: center; gap: ${isMobile ? '12px' : '16px'}; font-size: ${isMobile ? '12px' : '13px'}; ${
-                isDarkMode ? "color: #9ca3af;" : "color: #6b7280;"
-              } font-weight: 600;">
-                <span style="display: flex; align-items: center; gap: 4px;">❤️ ${
-                  event.likes
-                }</span>
-                <span style="display: flex; align-items: center; gap: 4px;">💬 ${
-                  event.comments
-                }</span>
-                <span style="display: flex; align-items: center; gap: 4px;">🔄 ${
-                  event.shares
-                }</span>
-                <span style="display: flex; align-items: center; gap: 4px;">🔖 ${
-                  event.bookmarks
-                }</span>
+            <!-- Tags -->
+            ${event.tags.length > 0 ? `
+              <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: ${isMobile ? '12px' : '16px'};">
+                ${event.tags.map(tag => `
+                  <span style="background: ${isDarkMode ? '#374151' : '#f3f4f6'}; color: ${isDarkMode ? '#d1d5db' : '#374151'}; padding: 4px 8px; border-radius: 12px; font-size: ${isMobile ? '11px' : '12px'}; font-weight: 500;">${tag}</span>
+                `).join('')}
               </div>
+            ` : ''}
+            
+            <!-- Action buttons -->
+            <div style="display: flex; gap: 8px;">
+              <button style="flex: 1; background: #3b82f6; color: white; border: none; padding: ${isMobile ? '8px 12px' : '10px 16px'}; border-radius: 8px; font-weight: 600; font-size: ${isMobile ? '12px' : '13px'}; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
+                View Details
+              </button>
+              <button style="background: ${isDarkMode ? '#374151' : '#f3f4f6'}; color: ${isDarkMode ? '#d1d5db' : '#374151'}; border: none; padding: ${isMobile ? '8px 12px' : '10px 16px'}; border-radius: 8px; font-weight: 600; font-size: ${isMobile ? '12px' : '13px'}; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='${isDarkMode ? '#4b5563' : '#e5e7eb'}'" onmouseout="this.style.background='${isDarkMode ? '#374151' : '#f3f4f6'}'">
+                Share
+              </button>
             </div>
           </div>
         `
@@ -727,6 +723,103 @@ export default function GoogleMap({
 
       markersRef.current.push(marker)
     })
+
+    // Add location display markers if available
+    if (locationData && locationData.locations_to_display) {
+      locationData.locations_to_display.forEach((location) => {
+        const position = { lat: location.latitude, lng: location.longitude }
+        
+        // Create custom marker for location
+        const markerIcon = {
+          url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+            <svg width="48" height="48" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="grad${location.id}" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:${location.color};stop-opacity:1" />
+                  <stop offset="100%" style="stop-color:${location.color}90;stop-opacity:1" />
+                </linearGradient>
+                <filter id="shadow${location.id}" x="-50%" y="-50%" width="200%" height="200%">
+                  <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="rgba(0,0,0,0.3)"/>
+                </filter>
+              </defs>
+              <circle cx="24" cy="24" r="22" fill="url(#grad${location.id})" stroke="white" stroke-width="2" filter="url(#shadow${location.id})"/>
+              <circle cx="24" cy="24" r="12" fill="white" opacity="0.9"/>
+              <circle cx="24" cy="24" r="6" fill="${location.color}" opacity="0.8"/>
+              <text x="24" y="28" text-anchor="middle" font-size="16" font-weight="bold" fill="white">${location.icon}</text>
+            </svg>
+          `)}`,
+          scaledSize: new window.google.maps.Size(48, 48),
+          anchor: new window.google.maps.Point(24, 24)
+        }
+
+        const marker = new window.google.maps.Marker({
+          position,
+          map: mapInstanceRef.current,
+          icon: markerIcon,
+          title: location.name,
+          optimized: true,
+          zIndex: 2000, // Higher than event markers
+        })
+
+        marker.addListener("click", () => {
+          // Create info window content with mood data
+          let moodInfo = ""
+          if (location.mood) {
+            const mood = location.mood
+            moodInfo = `
+              <div style="margin-top: 12px; padding: 12px; background: ${isDarkMode ? '#1f2937' : '#f8fafc'}; border-radius: 8px; border-left: 4px solid ${location.color};">
+                <h4 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 600; color: ${location.color};">Mood Analysis</h4>
+                <p style="margin: 0 0 4px 0; font-size: 13px; color: ${isDarkMode ? '#d1d5db' : '#374151'};">
+                  <strong>Mood:</strong> ${mood.mood_label || 'Unknown'} (Score: ${mood.mood_score || 'N/A'})
+                </p>
+                ${mood.events && mood.events.length > 0 ? `
+                  <p style="margin: 4px 0 0 0; font-size: 12px; color: ${isDarkMode ? '#9ca3af' : '#6b7280'};">
+                    <strong>Events:</strong> ${mood.events.map((e: any) => e.type).join(', ')}
+                  </p>
+                ` : ''}
+              </div>
+            `
+          }
+
+          const content = `
+            <div style="padding: 20px; max-width: 320px; font-family: system-ui, -apple-system, sans-serif; border-radius: 16px; box-shadow: 0 4px 24px #0006; border: 1.5px solid #e5e7eb; background: #fff; color: #111827; ${isDarkMode ? 'filter: brightness(1.15);' : ''}">
+              <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                <div style="width: 40px; height: 40px; border-radius: 50%; background: ${location.color}; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px; margin-right: 12px;">
+                  ${location.icon}
+                </div>
+                <div>
+                  <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: ${isDarkMode ? '#f9fafb' : '#111827'};">
+                    ${location.name}
+                  </h3>
+                  <p style="margin: 4px 0 0 0; font-size: 12px; color: ${isDarkMode ? '#9ca3af' : '#6b7280'};">
+                    ${location.type.replace('_', ' ').toUpperCase()}
+                  </p>
+                </div>
+              </div>
+              
+              <p style="margin: 0 0 12px 0; font-size: 13px; color: ${isDarkMode ? '#d1d5db' : '#374151'};">
+                📍 ${location.address}
+              </p>
+              
+              ${location.rating ? `
+                <p style="margin: 0 0 12px 0; font-size: 13px; color: ${isDarkMode ? '#d1d5db' : '#374151'};">
+                  ⭐ Rating: ${location.rating}
+                </p>
+              ` : ''}
+              
+              ${moodInfo}
+            </div>
+          `
+
+          if (infoWindowRef.current) {
+            infoWindowRef.current.setContent(content)
+            infoWindowRef.current.open(mapInstanceRef.current, marker)
+          }
+        })
+
+        markersRef.current.push(marker)
+      })
+    }
 
     // Add zone overlays with mobile optimizations
     zones.forEach((zone) => {
@@ -744,51 +837,29 @@ export default function GoogleMap({
         zIndex: 50, // Lower than markers
       })
 
-      // Add click listener to show zone info
       polygon.addListener("click", () => {
         const content = `
-          <div style="padding: ${isMobile ? '12px' : '16px'}; max-width: ${isMobile ? '260px' : '300px'}; font-family: system-ui, -apple-system, sans-serif; border-radius: ${isMobile ? '12px' : '16px'}; ${
-            isDarkMode
-              ? "background: #1f2937; color: #f9fafb;"
-              : "background: #ffffff; color: #111827;"
-          }">
-            <div style="display: flex; align-items: center; margin-bottom: ${isMobile ? '8px' : '12px'};">
-              <div style="width: ${isMobile ? '28px' : '32px'}; height: ${isMobile ? '28px' : '32px'}; border-radius: 50%; background: ${zone.color}; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; margin-right: ${isMobile ? '8px' : '12px'};">
-                ${zone.type === "traffic" ? "🚗" : zone.type === "pollution" ? "🌫️" : zone.type === "happiness" ? "😊" : "🛡️"}
-              </div>
-              <div>
-                <h3 style="margin: 0; font-size: ${isMobile ? '14px' : '16px'}; font-weight: 700; ${
-                  isDarkMode ? "color: #f9fafb;" : "color: #111827;"
-                }">${zone.name}</h3>
-                <p style="margin: 0; font-size: ${isMobile ? '11px' : '12px'}; ${
-                  isDarkMode ? "color: #9ca3af;" : "color: #6b7280;"
-                }">${zone.type.toUpperCase()}</p>
-              </div>
-            </div>
-            <p style="margin: 0; font-size: ${isMobile ? '12px' : '14px'}; ${
-              isDarkMode ? "color: #d1d5db;" : "color: #374151;"
-            } line-height: 1.4;">${zone.description}</p>
-            <div style="margin-top: ${isMobile ? '8px' : '12px'}; padding: ${isMobile ? '6px 10px' : '8px 12px'}; background: ${
-              zone.severity === "high" ? "#fee2e2" : zone.severity === "medium" ? "#fef3c7" : "#d1fae5"
-            }; color: ${
-              zone.severity === "high" ? "#991b1b" : zone.severity === "medium" ? "#92400e" : "#065f46"
-            }; border-radius: 8px; font-size: ${isMobile ? '10px' : '12px'}; font-weight: 600; text-align: center;">
-              ${zone.severity.toUpperCase()} SEVERITY
+          <div style="padding: 16px; max-width: 280px; font-family: system-ui, -apple-system, sans-serif; border-radius: 12px; box-shadow: 0 4px 16px #0004; border: 1px solid #e5e7eb; background: #fff; color: #111827;">
+            <h3 style="margin: 0 0 8px 0; font-size: 16px; font-weight: 700; color: ${zone.color};">${zone.name}</h3>
+            <p style="margin: 0 0 8px 0; font-size: 13px; color: #6b7280;">${zone.description}</p>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 16px;">${
+                zone.type === "traffic" ? "🚗" : 
+                zone.type === "pollution" ? "🌫️" : 
+                zone.type === "happiness" ? "😊" : "🛡️"
+              }</span>
+              <span style="font-size: 12px; font-weight: 600; text-transform: uppercase; color: ${zone.color};">${zone.severity} ${zone.type}</span>
             </div>
           </div>
         `
 
         if (infoWindowRef.current) {
           infoWindowRef.current.setContent(content)
-          infoWindowRef.current.setPosition(polygon.getPath().getArray()[0])
-          infoWindowRef.current.open(mapInstanceRef.current)
+          infoWindowRef.current.open(mapInstanceRef.current, polygon)
         }
       })
-
-      markersRef.current.push(polygon)
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [events, onEventSelect, eventTypes, isDarkMode, mapError, zones])
+  }, [events, zones, locationData, isDarkMode, mapError, onEventSelect])
 
   // If there's an error, show the fallback map
   if (mapError) {

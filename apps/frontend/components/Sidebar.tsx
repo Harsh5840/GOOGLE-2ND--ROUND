@@ -1,7 +1,7 @@
 import React from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { TrendingUp, Filter, Search, Podcast } from "lucide-react"
+import { TrendingUp, Filter, Search, Podcast, Camera } from "lucide-react"
 import EventFeed from "./EventFeed"
 import Link from "next/link"
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
@@ -100,6 +100,26 @@ const Sidebar: React.FC<SidebarProps> = ({
                     </span>
                   </Button>
                 </DialogTrigger>
+              </Dialog>
+            </div>
+
+            {/* Photo Dashboard Button */}
+            <div className="mb-6 flex justify-start">
+              <Link href="/event-dashboard">
+                <Button
+                  className={`gap-2 px-4 py-2 rounded-xl font-bold text-base shadow-lg transition-all duration-300 hover:scale-105 ${
+                    isDarkMode
+                      ? "bg-green-700/90 text-white hover:bg-green-800/90"
+                      : "bg-green-600/90 text-white hover:bg-green-700/90"
+                  }`}
+                >
+                  <span className="flex items-center">
+                    <Camera className="w-5 h-5 mr-2" />
+                    Photo Dashboard
+                  </span>
+                </Button>
+              </Link>
+            </div>
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Generate City News Podcast</DialogTitle>

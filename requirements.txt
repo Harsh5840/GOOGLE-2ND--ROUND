@@ -20,6 +20,8 @@ httpx>=0.24.0
 # News API client
 newsapi-python~=0.2.6
 
+
+# Google Cloud and AI Platform
 google-cloud-texttospeech
 google-auth
 google-auth-oauthlib

@@ -4,6 +4,13 @@ export interface ChatResponse {
     [key: string]: any;
   };
   reply: string;
+  location_data?: {
+    locations_to_display?: any[];
+    mood_data?: any;
+    route_details?: any;
+    places?: any[];
+    summary?: string;
+  };
 }
 
 export interface ChatMessage {
@@ -11,7 +18,11 @@ export interface ChatMessage {
   sender: 'user' | 'bot';
   text: string;
   timestamp: Date;
-  entities?: {
-    [key: string]: any;
+  locationData?: {
+    locations_to_display?: any[];
+    mood_data?: any;
+    route_details?: any;
+    places?: any[];
+    summary?: string;
   };
 }
