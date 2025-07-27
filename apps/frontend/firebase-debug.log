@@ -1,0 +1,55 @@
+[debug] [2025-07-27T04:22:48.315Z] ----------------------------------------------------------------------
+[debug] [2025-07-27T04:22:48.317Z] Command:       /nix/store/18a18ac5z9iim925irl12rvr08ycwmdk-nodejs-20.19.4/bin/node /home/cafo/.npm/_npx/7750544ccf494d8b/node_modules/.bin/firebase deploy
+[debug] [2025-07-27T04:22:48.317Z] CLI Version:   14.11.1
+[debug] [2025-07-27T04:22:48.317Z] Platform:      linux
+[debug] [2025-07-27T04:22:48.317Z] Node Version:  v20.19.4
+[debug] [2025-07-27T04:22:48.318Z] Time:          Sun Jul 27 2025 09:52:48 GMT+0530 (India Standard Time)
+[debug] [2025-07-27T04:22:48.318Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-07-27T04:22:48.512Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-07-27T04:22:48.512Z] > authorizing via signed-in user (karttikeyasinha11@gmail.com)
+[debug] [2025-07-27T04:22:48.512Z] [iam] checking project city-project-466410 for permissions ["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2025-07-27T04:22:48.513Z] Checked if tokens are valid: true, expires at: 1753593076244
+[debug] [2025-07-27T04:22:48.514Z] Checked if tokens are valid: true, expires at: 1753593076244
+[debug] [2025-07-27T04:22:48.515Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-project-466410:testIamPermissions [none]
+[debug] [2025-07-27T04:22:48.516Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-project-466410:testIamPermissions x-goog-quota-user=projects/city-project-466410
+[debug] [2025-07-27T04:22:48.516Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-project-466410:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2025-07-27T04:22:49.924Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-project-466410:testIamPermissions 200
+[debug] [2025-07-27T04:22:49.924Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-project-466410:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2025-07-27T04:22:49.925Z] Checked if tokens are valid: true, expires at: 1753593076244
+[debug] [2025-07-27T04:22:49.925Z] Checked if tokens are valid: true, expires at: 1753593076244
+[debug] [2025-07-27T04:22:49.925Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/city-project-466410 [none]
+[debug] [2025-07-27T04:22:50.490Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/city-project-466410 200
+[debug] [2025-07-27T04:22:50.490Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/city-project-466410 {"projectId":"city-project-466410","projectNumber":"303784709433","displayName":"city-project","name":"projects/city-project-466410","resources":{"hostingSite":"city-project-466410"},"state":"ACTIVE","etag":"1_08ee8a36-b176-48f6-901d-e5863b3e55e2"}
+[info] 
+[info] === Deploying to 'city-project-466410'...
+[info] 
+[info] i  deploying firestore, hosting 
+[info] i  firestore: reading indexes from firestore.indexes.json... 
+[info] i  cloud.firestore: checking firestore.rules for compilation errors... 
+[debug] [2025-07-27T04:22:50.494Z] Checked if tokens are valid: true, expires at: 1753593076244
+[debug] [2025-07-27T04:22:50.494Z] Checked if tokens are valid: true, expires at: 1753593076244
+[debug] [2025-07-27T04:22:50.494Z] >>> [apiv2][query] POST https://firebaserules.googleapis.com/v1/projects/city-project-466410:test [none]
+[debug] [2025-07-27T04:22:50.494Z] >>> [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/city-project-466410:test [omitted]
+[debug] [2025-07-27T04:22:51.932Z] <<< [apiv2][status] POST https://firebaserules.googleapis.com/v1/projects/city-project-466410:test 200
+[debug] [2025-07-27T04:22:51.932Z] <<< [apiv2][body] POST https://firebaserules.googleapis.com/v1/projects/city-project-466410:test {}
+[info] ✔  cloud.firestore: rules file firestore.rules compiled successfully 
+[debug] [2025-07-27T04:22:51.935Z] Checked if tokens are valid: true, expires at: 1753593076244
+[debug] [2025-07-27T04:22:51.935Z] Checked if tokens are valid: true, expires at: 1753593076244
+[debug] [2025-07-27T04:22:51.935Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/city-project-466410/versions [none]
+[debug] [2025-07-27T04:22:51.935Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/city-project-466410/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase"}}
+[debug] [2025-07-27T04:22:55.215Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/city-project-466410/versions 200
+[debug] [2025-07-27T04:22:55.215Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/city-project-466410/versions {"name":"projects/303784709433/sites/city-project-466410/versions/138d7013d296eb3f","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase"}}
+[debug] [2025-07-27T04:22:55.215Z] Checked if tokens are valid: true, expires at: 1753593076244
+[debug] [2025-07-27T04:22:55.215Z] Checked if tokens are valid: true, expires at: 1753593076244
+[debug] [2025-07-27T04:22:55.216Z] >>> [apiv2][query] GET https://firestore.googleapis.com/v1/projects/city-project-466410/databases/(default) [none]
+[debug] [2025-07-27T04:22:56.989Z] <<< [apiv2][status] GET https://firestore.googleapis.com/v1/projects/city-project-466410/databases/(default) 200
+[debug] [2025-07-27T04:22:56.989Z] <<< [apiv2][body] GET https://firestore.googleapis.com/v1/projects/city-project-466410/databases/(default) {"name":"projects/city-project-466410/databases/(default)","uid":"b0b70261-a4a1-4ea8-b74d-e956e868ea5f","createTime":"2025-07-24T14:26:56.799014Z","updateTime":"2025-07-24T14:26:56.799014Z","locationId":"us-central1","type":"FIRESTORE_NATIVE","concurrencyMode":"PESSIMISTIC","versionRetentionPeriod":"3600s","earliestVersionTime":"2025-07-27T03:22:56.757583Z","appEngineIntegrationMode":"DISABLED","pointInTimeRecoveryEnablement":"POINT_IN_TIME_RECOVERY_DISABLED","deleteProtectionState":"DELETE_PROTECTION_DISABLED","databaseEdition":"STANDARD","freeTier":true,"etag":"ILLoxLyY3I4DMNDf9pP92o4D"}
+[debug] [2025-07-27T04:22:56.990Z] Checked if tokens are valid: true, expires at: 1753593076244
+[debug] [2025-07-27T04:22:56.990Z] Checked if tokens are valid: true, expires at: 1753593076244
+[debug] [2025-07-27T04:22:56.990Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/city-project-466410/releases pageSize=10&pageToken=
+[debug] [2025-07-27T04:22:57.854Z] <<< [apiv2][status] GET https://firebaserules.googleapis.com/v1/projects/city-project-466410/releases 200
+[debug] [2025-07-27T04:22:57.854Z] <<< [apiv2][body] GET https://firebaserules.googleapis.com/v1/projects/city-project-466410/releases {"releases":[{"name":"projects/city-project-466410/releases/cloud.firestore","rulesetName":"projects/city-project-466410/rulesets/ea3bc042-bcc7-41e9-ba88-3c3f3c634c0d","createTime":"2025-07-24T14:27:57.467802Z","updateTime":"2025-07-27T04:20:21.592644Z"}]}
+[debug] [2025-07-27T04:22:57.854Z] Checked if tokens are valid: true, expires at: 1753593076244
+[debug] [2025-07-27T04:22:57.855Z] Checked if tokens are valid: true, expires at: 1753593076244
+[debug] [2025-07-27T04:22:57.855Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/city-project-466410/rulesets/ea3bc042-bcc7-41e9-ba88-3c3f3c634c0d [none]
