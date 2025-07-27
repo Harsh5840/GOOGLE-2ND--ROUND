@@ -146,25 +146,6 @@ class BotResponse(BaseModel):
     reply: str
     location_data: Optional[dict] = None
 
-# Event Photo schemas
-class EventPhotoResponse(BaseModel):
-    id: str
-    filename: str
-    file_url: str
-    latitude: float
-    longitude: float
-    user_id: str
-    description: Optional[str] = None
-    gemini_summary: str
-    upload_timestamp: str
-    status: str
-
-class UploadResponse(BaseModel):
-    success: bool
-    photo_id: Optional[str] = None
-    message: str
-    error: Optional[str] = None
-
 # Health check endpoint
 @app.get("/")
 async def root():
@@ -184,7 +165,7 @@ async def root():
 async def health_check():
     return {"status": "healthy"}
 
-# Chat endpoint with full functionality
+# Chat endpoint with fallback
 @app.post("/chat", response_model=BotResponse)
 async def chat_router(query: UserQuery):
     try:
@@ -325,103 +306,6 @@ async def must_visit_places_endpoint(
             "places": places,
             "status": "success"
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# Event photo endpoints
-@app.post("/upload_event_photo", response_model=UploadResponse)
-async def upload_event_photo_endpoint(
-    file: Any = None,  # Will be handled by Form
-    latitude: float = Form(...),
-    longitude: float = Form(...),
-    user_id: str = Form(...),
-    description: Optional[str] = Form(None)
-):
-    try:
-        if TOOLS_AVAILABLE:
-            # Use full photo upload if available
-            result = await upload_event_photo(file, latitude, longitude, user_id, description)
-            return UploadResponse(
-                success=True,
-                photo_id=result.get("photo_id"),
-                message="Photo uploaded successfully",
-                error=None
-            )
-        else:
-            return UploadResponse(
-                success=True,
-                photo_id="temp_id",
-                message="Photo upload simulated (tools not available)",
-                error=None
-            )
-    except Exception as e:
-        return UploadResponse(
-            success=False,
-            message="Upload failed",
-            error=str(e)
-        )
-
-@app.get("/event_photos", response_model=List[EventPhotoResponse])
-async def get_event_photos():
-    try:
-        if TOOLS_AVAILABLE:
-            return await get_all_event_photos()
-        else:
-            return []
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# User profile endpoints (if firestore available)
-@app.post("/user/profile")
-async def create_update_user_profile(
-    user_id: str = Form(...),
-    profile_data: str = Form(...)  # JSON string
-):
-    try:
-        if FIRESTORE_AVAILABLE:
-            return await create_or_update_user_profile(user_id, json.loads(profile_data))
-        else:
-            return {"message": "User profile service not available"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/user/profile/{user_id}")
-async def get_user_profile_endpoint(user_id: str):
-    try:
-        if FIRESTORE_AVAILABLE:
-            return await get_user_profile(user_id)
-        else:
-            return {"message": "User profile service not available"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# Unified data endpoints (if firestore available)
-@app.post("/unified-data")
-async def store_unified_data_endpoint(
-    location_name: str = Form(...),
-    data_type: str = Form(...),
-    data: str = Form(...),  # JSON string
-    user_id: Optional[str] = Form(None)
-):
-    try:
-        if FIRESTORE_AVAILABLE:
-            return await store_unified_data(location_name, data_type, json.loads(data), user_id)
-        else:
-            return {"message": "Unified data service not available"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/unified-data/{location_name}")
-async def get_unified_data_endpoint(
-    location_name: str,
-    data_type: Optional[str] = None,
-    hours: int = 24
-):
-    try:
-        if FIRESTORE_AVAILABLE:
-            return await get_unified_data(location_name, data_type, hours)
-        else:
-            return {"message": "Unified data service not available"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

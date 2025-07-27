@@ -24,8 +24,8 @@ print_success() {
 
 # Deploy Orchestrator (Simplified version for testing)
 print_status "Deploying Orchestrator (Simplified)..."
-chmod +x deploy-orchestrator.sh
-./deploy-orchestrator.sh
+chmod +x deploy-orchestrator-robust.sh
+./deploy-orchestrator-robust.sh
 
 # Get orchestrator URL
 ORCHESTRATOR_URL=$(gcloud run services describe city-orchestrator --region=$REGION --format="value(status.url)")

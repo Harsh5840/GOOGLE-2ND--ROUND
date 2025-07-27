@@ -6,7 +6,11 @@ import traceback
 from datetime import datetime
 
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
-gmaps = googlemaps.Client(key=GOOGLE_MAPS_API_KEY)
+# Only create client if API key is available
+if GOOGLE_MAPS_API_KEY:
+    gmaps = googlemaps.Client(key=GOOGLE_MAPS_API_KEY)
+else:
+    gmaps = None
 
 def get_best_route(current_location: str, destination: str, mode: str = "driving") -> Dict[str, Any]:
     """
@@ -54,6 +58,14 @@ def get_best_route(current_location: str, destination: str, mode: str = "driving
             params["departure_time"] = "now"
             params["traffic_model"] = "best_guess"
         
+        if not gmaps:
+            return {
+                "success": False,
+                "error": "Google Maps API key not configured.",
+                "route_info": None,
+                "mood_data": None,
+                "locations_to_display": []
+            }
         directions_result = gmaps.directions(**params)
         
         if not directions_result or not isinstance(directions_result, list) or not directions_result[0].get("legs"):
@@ -182,6 +194,14 @@ def get_must_visit_places_nearby(location: str, max_results: int = 3) -> Dict[st
         }
     
     try:
+        if not gmaps:
+            return {
+                "success": False,
+                "error": "Google Maps API key not configured.",
+                "places": [],
+                "mood_data": None,
+                "locations_to_display": []
+            }
         log_event("MapsTool", f"Geocoding location: '{location}'")
         geocode = gmaps.geocode(location)
         log_event("MapsTool", f"Geocode result: {geocode}")
@@ -348,6 +368,8 @@ def get_location_coordinates(location: str) -> Optional[Dict[str, float]]:
     Get coordinates for a location string.
     """
     try:
+        if not gmaps:
+            return None
         geocode = gmaps.geocode(location)
         if geocode and geocode[0].get("geometry", {}).get("location"):
             return geocode[0]["geometry"]["location"]

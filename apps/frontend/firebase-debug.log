@@ -53,3 +53,19 @@
 [debug] [2025-07-27T04:22:57.854Z] Checked if tokens are valid: true, expires at: 1753593076244
 [debug] [2025-07-27T04:22:57.855Z] Checked if tokens are valid: true, expires at: 1753593076244
 [debug] [2025-07-27T04:22:57.855Z] >>> [apiv2][query] GET https://firebaserules.googleapis.com/v1/projects/city-project-466410/rulesets/ea3bc042-bcc7-41e9-ba88-3c3f3c634c0d [none]
+[debug] [2025-07-27T04:30:59.864Z] ----------------------------------------------------------------------
+[debug] [2025-07-27T04:30:59.867Z] Command:       /nix/store/18a18ac5z9iim925irl12rvr08ycwmdk-nodejs-20.19.4/bin/node /home/cafo/.npm/_npx/7750544ccf494d8b/node_modules/.bin/firebase deploy
+[debug] [2025-07-27T04:30:59.867Z] CLI Version:   14.11.1
+[debug] [2025-07-27T04:30:59.867Z] Platform:      linux
+[debug] [2025-07-27T04:30:59.868Z] Node Version:  v20.19.4
+[debug] [2025-07-27T04:30:59.868Z] Time:          Sun Jul 27 2025 10:00:59 GMT+0530 (India Standard Time)
+[debug] [2025-07-27T04:30:59.868Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-07-27T04:31:00.052Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-07-27T04:31:00.052Z] > authorizing via signed-in user (karttikeyasinha11@gmail.com)
+[debug] [2025-07-27T04:31:00.052Z] [iam] checking project city-project-466410 for permissions ["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2025-07-27T04:31:00.053Z] Checked if tokens are valid: true, expires at: 1753593076244
+[debug] [2025-07-27T04:31:00.054Z] Checked if tokens are valid: true, expires at: 1753593076244
+[debug] [2025-07-27T04:31:00.054Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-project-466410:testIamPermissions [none]
+[debug] [2025-07-27T04:31:00.054Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-project-466410:testIamPermissions x-goog-quota-user=projects/city-project-466410
+[debug] [2025-07-27T04:31:00.055Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/city-project-466410:testIamPermissions {"permissions":["datastore.indexes.create","datastore.indexes.delete","datastore.indexes.list","datastore.indexes.update","firebase.projects.get","firebasehosting.sites.update"]}
