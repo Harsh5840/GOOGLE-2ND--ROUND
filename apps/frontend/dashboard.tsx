@@ -57,7 +57,7 @@ import ReportModal from "./components/ReportModal"
 import PhotoUpload from "./components/PhotoUpload"
 import { getSeverityColor, formatTimeAgo } from "./lib/utils"
 
-import { sendChatMessage, getLocationMood, getLocationMoodWithDisplay, getBestRouteWithMood, getMustVisitPlacesWithMood } from "@/lib/api"
+import { sendChatMessage, getLocationMoodWithDisplay, getBestRouteWithMood, getMustVisitPlacesWithMood } from "@/lib/api"
 import { ChatMessage } from "@/types/chat"
 import LoginButton from "./components/LoginButton";
 
@@ -295,9 +295,9 @@ export default function UrbanPulseDashboard() {
   const [selectedEvent, setSelectedEvent] = useState<CityEvent | null>(null)
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
-      id: 1,
-      type: "bot",
-      message: "Hi! I'm your city assistant. Ask me anything about traffic, events, or city services.",
+      id: "1",
+      sender: "bot",
+      text: "Hi! I'm your city assistant. Ask me anything about traffic, events, or city services.",
       timestamp: new Date(Date.now() - 60000),
     },
   ])
@@ -365,12 +365,12 @@ export default function UrbanPulseDashboard() {
   useEffect(() => {
     setMoodLoading(true)
     setMoodError(null)
-    getLocationMood("New York City")
-      .then((data) => {
+    getLocationMoodWithDisplay("New York City")
+      .then((data: any) => {
         setLocationMood(data)
         setMoodLoading(false)
       })
-      .catch((err) => {
+      .catch((err: any) => {
         setMoodError("Could not fetch city mood data.")
         setMoodLoading(false)
       })

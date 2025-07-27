@@ -75,7 +75,7 @@ function joinUrl(base: string, path: string) {
 }
 
 export async function generatePodcast(city: string, duration: number, voice = "en-US-Studio-Q", speakingRate = 1.0) {
-  const response = await axios.post(joinUrl(API_BASE_URL, "/podcast/generate"), {
+  const response = await axios.post(joinUrl(API_BASE_URL || "", "/podcast/generate"), {
     city,
     duration_minutes: duration,
     voice,
@@ -87,7 +87,7 @@ export async function generatePodcast(city: string, duration: number, voice = "e
 export async function pollPodcastJob(jobId: string) {
   // Poll until status is completed
   while (true) {
-    const res = await axios.get(joinUrl(API_BASE_URL, `/jobs/${jobId}`));
+    const res = await axios.get(joinUrl(API_BASE_URL || "", `/jobs/${jobId}`));
     if (res.data.status === "completed") return res.data;
     if (res.data.status === "failed") throw new Error(res.data.message || "Podcast generation failed");
     await new Promise(r => setTimeout(r, 2000));
@@ -95,7 +95,7 @@ export async function pollPodcastJob(jobId: string) {
 }
 
 export function getPodcastAudioUrl(filename: string) {
-  return joinUrl(API_BASE_URL, `/files/${filename}`);
+  return joinUrl(API_BASE_URL || "", `/files/${filename}`);
 }
 
 // Event Photos API

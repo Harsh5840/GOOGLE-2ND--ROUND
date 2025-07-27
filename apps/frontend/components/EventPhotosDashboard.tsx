@@ -442,7 +442,7 @@ export default function EventPhotosDashboard() {
                 const photo = photos.find(p => parseInt(p.id.replace(/-/g, '').slice(0, 8), 16) === event.id)
                 setSelectedPhoto(photo || null)
               }}
-              eventTypes={[{ id: 'photo', label: 'Photos' }]}
+              eventTypes={[{ id: 'photo', label: 'Photos', icon: '📷', color: '#3b82f6', gradient: 'from-blue-500 to-blue-600' }]}
               isDarkMode={false}
               zones={[]}
             />
