@@ -23,6 +23,7 @@ from shared.utils.mood import aggregate_mood
 from agents.intent_extractor.agent import extract_intent
 from agents.agglomerator import aggregate_api_results
 from tools.maps import get_must_visit_places_nearby
+from agents.multilingual_wrapper import multilingual_wrapper
 
 # Initialize Google Cloud Vertex AI
 aiplatform.init(project=os.getenv("GCP_PROJECT_ID"), location=os.getenv("GCP_REGION"))
@@ -34,6 +35,7 @@ app = FastAPI()
 class UserQuery(BaseModel):
     user_id: str
     message: str
+    language: str = "en"
 
 # Response schema
 class BotResponse(BaseModel):
@@ -100,6 +102,16 @@ def dispatch_tool(intent: str, entities: dict, query: str) -> tuple[bool, str]:
 async def chat_router(query: UserQuery):
     log_event("Orchestrator", f"Received: {query.message}")
     
+    # 0. Process multilingual input
+    original_message = query.message
+    english_message, _ = await multilingual_wrapper.process_multilingual_message(
+        query.user_id, query.message, ""
+    )
+    
+    # Use English message for processing
+    query.message = english_message
+    log_event("Orchestrator", f"Translated message for processing: {english_message}")
+    
     # 1. Extract intent/entities
     intent_data = extract_intent(query.message)
     intent = intent_data["intent"]
@@ -133,6 +145,15 @@ async def chat_router(query: UserQuery):
     ):
         log_event("Orchestrator", "No valid reply from tool, falling back to Gemini LLM.")
         reply = await run_gemini_fallback_agent(query.message, user_id=query.user_id)
+
+    # 6. Translate response back to user's language
+    user_lang = multilingual_wrapper.get_user_language(query.user_id)
+    if user_lang != 'en':
+        reply = await multilingual_wrapper.translate_from_english(reply, user_lang)
+        log_event("Orchestrator", f"Translated response to {user_lang}: {reply[:100]}...")
+    
+    # 7. Update conversation context
+    multilingual_wrapper.update_conversation_context(query.user_id, original_message, reply)
 
     return BotResponse(intent=intent, entities=entities, reply=reply)
 

@@ -25,3 +25,5 @@ google-auth
 google-auth-oauthlib
 google-auth-httplib2
 vertexai
+google-generativeai
+requests

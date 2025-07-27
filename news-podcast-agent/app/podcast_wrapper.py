@@ -10,9 +10,9 @@ from google.adk.runners import Runner
 from google.adk.agents.invocation_context import InvocationContext
 from google.adk.sessions import InMemorySessionService
 
-from app.agent import PodcastPipeline, NewsResearcher, PodcastScripter, PodcastProducer
-from app.tools import fetch_local_news, synthesize_speech
-from app.utils.files import get_output_dir
+from agent import PodcastPipeline, NewsResearcher, PodcastScripter, PodcastProducer
+from tools import fetch_local_news, synthesize_speech
+from utils.files import get_output_dir
 import logging
 
 

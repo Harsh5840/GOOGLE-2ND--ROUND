@@ -1,0 +1,19 @@
+Podcast Script for Bengaluru
+Language: English
+Duration: 2 minutes
+Generated: 5 articles
+Voice: Enhanced ElevenLabs (Adam - Male)
+
+Hello Bengaluru, and welcome to your quick news update.
+
+Bengaluru-based Yali Capital has just announced the closing of its debut deep tech fund at a whopping 893 crore rupees. This exceeds their initial target of 500 crore rupees. Yali Capital aims to invest in eight portfolio companies by the end of this year, solidifying its position in the deep tech investment landscape.
+
+Shifting gears, US household goods giant Clorox has filed a lawsuit against Cognizant for $380 million. The suit alleges that Cognizant's service desk granted unauthorized access to cybercriminals, leading to significant damages for Clorox.
+
+In the automotive world, MG has launched its Cyberster electric car, generating significant buzz in the Indian EV market. The Cyberster boasts an impressive range of 580 kilometers, making it a strong contender in the rapidly growing electric vehicle segment.
+
+Now, turning to the food delivery sector, Swiggy has appointed Faraz Khalid, CEO of MidEast ecommerce major Noon, as an independent director on its board. This move comes as SoftBank and Accel, long-time investors in Swiggy, step down. This appointment signals a strategic shift for Swiggy as it continues to navigate the competitive food delivery market.
+
+Finally, we return to Yali Capital. The 893 crore rupees deep tech fund, exceeding the initial 500 crore target, is set to propel innovation and growth in the sector. They are aiming at eight new portfolio companies by the end of the year.
+
+That’s all for your Bengaluru news update. Thanks for tuning in, and have a great day.

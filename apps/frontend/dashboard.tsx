@@ -321,6 +321,7 @@ export default function UrbanPulseDashboard() {
   const [locationMood, setLocationMood] = useState<any>(null)
   const [moodLoading, setMoodLoading] = useState(false)
   const [moodError, setMoodError] = useState<string | null>(null)
+  const [selectedLanguage, setSelectedLanguage] = useState("en")
 
   // Check if mobile
   useEffect(() => {
@@ -423,7 +424,7 @@ export default function UrbanPulseDashboard() {
     try {
       // Replace with actual user ID from Firebase Auth
       const userId = "test-user"
-      const response = await sendChatMessage(userId, chatInput)
+      const response = await sendChatMessage(userId, chatInput, selectedLanguage)
 
       const botMessage: ChatMessage = {
         id: Date.now() + 1,
@@ -704,6 +705,8 @@ export default function UrbanPulseDashboard() {
           mobileChatOpen={mobileChatOpen}
           mobileChatExpanded={mobileChatExpanded}
           setMobileChatExpanded={setMobileChatExpanded}
+          selectedLanguage={selectedLanguage}
+          onLanguageChange={setSelectedLanguage}
         />
       </div>
 

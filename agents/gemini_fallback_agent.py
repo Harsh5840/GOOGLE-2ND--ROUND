@@ -8,6 +8,7 @@ from google.adk.runners import Runner
 from google.genai import types
 import uuid
 from agents.session_service import session_service, COMMON_APP_NAME
+from agents.multilingual_wrapper import multilingual_wrapper
 
 def create_gemini_fallback_agent():
     return Agent(
@@ -33,5 +34,11 @@ async def run_gemini_fallback_agent(query: str, user_id: str = "testuser", sessi
                 if hasattr(part, 'text'):
                     result += part.text
     print("DEBUG: Final result before return:", repr(result))
+    
+    # Translate response to user's language if needed
+    user_lang = multilingual_wrapper.get_user_language(user_id)
+    if user_lang != 'en':
+        result = await multilingual_wrapper.translate_from_english(result.strip(), user_lang)
+    
     return result.strip()
 

@@ -2,6 +2,7 @@ import React from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Bot, ChevronRight, ChevronUp, ChevronDown, Send } from "lucide-react"
+import LanguageSelector from "./LanguageSelector"
 
 interface ChatProps {
   isDarkMode: boolean
@@ -18,6 +19,8 @@ interface ChatProps {
   mobileChatOpen: boolean
   mobileChatExpanded: boolean
   setMobileChatExpanded: (expanded: boolean) => void
+  selectedLanguage: string
+  onLanguageChange: (languageCode: string) => void
 }
 
 const Chat: React.FC<ChatProps> = ({
@@ -35,6 +38,8 @@ const Chat: React.FC<ChatProps> = ({
   mobileChatOpen,
   mobileChatExpanded,
   setMobileChatExpanded,
+  selectedLanguage,
+  onLanguageChange,
 }) => {
   return (
     <>
@@ -72,11 +77,16 @@ const Chat: React.FC<ChatProps> = ({
                   <div className="w-12 h-12 bg-gradient-to-br from-purple-500 via-pink-500 to-indigo-500 rounded-2xl flex items-center justify-center shadow-xl shadow-purple-500/25 group-hover:shadow-2xl group-hover:shadow-purple-500/40 transition-all duration-300 group-hover:scale-110">
                     <Bot className="w-7 h-7 text-white animate-pulse" />
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <h3 className={`font-bold text-lg ${isDarkMode ? "text-gray-100" : "text-gray-900"}`}>City Assistant</h3>
                     <p className={`text-sm font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>Ask anything about your city</p>
                   </div>
-                  <div className="ml-auto">
+                  <div className="flex items-center space-x-2">
+                    <LanguageSelector
+                      selectedLanguage={selectedLanguage}
+                      onLanguageChange={onLanguageChange}
+                      isDarkMode={isDarkMode}
+                    />
                     <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse shadow-lg shadow-green-500/50"></div>
                   </div>
                 </div>

@@ -16,52 +16,46 @@ import os
 from dataclasses import dataclass
 from dotenv import load_dotenv
 
-import google.auth
-
 # Load environment variables from .env file
 load_dotenv()
 
-# To use AI Studio credentials:
-# 1. Create a .env file in the /app directory with:
-#    GOOGLE_GENAI_USE_VERTEXAI=FALSE
-#    GOOGLE_API_KEY=PASTE_YOUR_ACTUAL_API_KEY_HERE
-# 2. This will override the default Vertex AI configuration
-
-# Try to get project_id from google.auth, but handle the case where it might be None
-try:
-    _, project_id = google.auth.default()
-    if project_id:
-        os.environ.setdefault("GOOGLE_CLOUD_PROJECT", project_id)
-    else:
-        # Use a default project ID if none is available from auth
-        os.environ.setdefault("GOOGLE_CLOUD_PROJECT", "news-podcast-agent-project")
-except Exception:
-    # Fallback if authentication fails
-    os.environ.setdefault("GOOGLE_CLOUD_PROJECT", "news-podcast-agent-project")
-
-os.environ.setdefault("GOOGLE_CLOUD_LOCATION", "global")
-os.environ.setdefault("GOOGLE_GENAI_USE_VERTEXAI", "True")
-
-
 @dataclass
-class ResearchConfiguration:
-    """Configuration for research-related models and parameters.
+class NewsPodcastConfig:
+    """Configuration for the news podcast agent.
 
     Attributes:
-        critic_model (str): Model for evaluation tasks.
-        worker_model (str): Model for working/generation tasks.
-        max_search_iterations (int): Maximum search iterations allowed.
+        google_api_key (str): Google API key for Gemini models.
         news_api_key (str): API key for the News API.
-        google_api_key (str): Google Cloud API key for TTS and other services.
+        elevenlabs_api_key (str): API key for ElevenLabs TTS.
+        default_city (str): Default city for news.
+        default_duration_minutes (int): Default podcast duration.
     """
 
-    critic_model: str = "gemini-2.5-pro"
-    worker_model: str = "gemini-2.5-flash"
-    max_search_iterations: int = 5
+    google_api_key: str = os.getenv("GOOGLE_API_KEY", "")
     news_api_key: str = os.getenv("NEWS_API_KEY", "")
-    google_api_key: str = os.getenv("GOOGLE_API_KEY", "your-google-api-key-here")
+    elevenlabs_api_key: str = os.getenv("ELEVENLABS_API_KEY", "your-elevenlabs-api-key-here")
     default_city: str = "Bengaluru"
     default_duration_minutes: int = 2
 
+    def validate(self):
+        """Validate that required API keys are set."""
+        missing_keys = []
+        if not self.google_api_key or self.google_api_key == "your-google-api-key-here":
+            missing_keys.append("GOOGLE_API_KEY")
+        if not self.news_api_key:
+            missing_keys.append("NEWS_API_KEY")
+        # ElevenLabs key is hardcoded in tools.py, so we don't need to validate it here
+        
+        if missing_keys:
+            raise ValueError(f"Missing required API keys: {', '.join(missing_keys)}")
+    
+    def get_elevenlabs_key(self):
+        """Get ElevenLabs API key with placeholder handling."""
+        if not self.elevenlabs_api_key or self.elevenlabs_api_key == "your-elevenlabs-api-key-here":
+            print("⚠️  ElevenLabs API key not set")
+            print("   Get your free API key from: https://elevenlabs.io/")
+            print("   Add it to your .env file as: ELEVENLABS_API_KEY=your_key_here")
+            return None
+        return self.elevenlabs_api_key
 
-config = ResearchConfiguration()
+config = NewsPodcastConfig()

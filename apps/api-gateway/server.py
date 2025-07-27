@@ -27,6 +27,7 @@ app.add_middleware(
 class ChatInput(BaseModel):
     user_id: str
     message: str
+    language: str = "en"
 
 class ChatOutput(BaseModel):
     intent: str

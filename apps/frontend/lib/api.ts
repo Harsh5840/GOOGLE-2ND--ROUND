@@ -3,11 +3,12 @@ import { ChatResponse } from '@/types/chat';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-export async function sendChatMessage(userId: string, message: string): Promise<ChatResponse> {
+export async function sendChatMessage(userId: string, message: string, language?: string): Promise<ChatResponse> {
   try {
     const response = await axios.post(`${API_BASE_URL}/chat`, {
       user_id: userId,
       message,
+      language: language || 'en',
     });
     return response.data;
   } catch (error: any) {

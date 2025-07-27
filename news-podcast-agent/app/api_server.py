@@ -19,9 +19,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from config import config
-from app.tools import synthesize_speech, fetch_local_news
-from app.podcast_wrapper import PodcastAgent
-from app.utils.files import get_output_dir
+from tools import synthesize_speech, fetch_local_news
+from podcast_wrapper import PodcastAgent
+from utils.files import get_output_dir
 
 # Initialize FastAPI app
 app = FastAPI(

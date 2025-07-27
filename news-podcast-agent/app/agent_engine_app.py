@@ -18,6 +18,7 @@ import datetime
 import json
 import logging
 import os
+import sys
 from typing import Any, List, Dict
 
 import google.auth
@@ -29,11 +30,22 @@ from opentelemetry.sdk.trace import TracerProvider, export
 from vertexai import agent_engines
 from vertexai.preview.reasoning_engines import AdkApp
 
-from .agent import root_agent  # Now the podcast orchestrator agent
-from .config import config
-from .utils.gcs import create_bucket_if_not_exists
-from .utils.tracing import CloudTraceLoggingSpanExporter
-from .utils.typing import Feedback
+from agent import root_agent  # Now the podcast orchestrator agent
+from config import config
+from utils.gcs import create_bucket_if_not_exists
+from utils.tracing import CloudTraceLoggingSpanExporter
+from utils.typing import Feedback
+from sys import path as sys_path
+sys_path.append("../../agents")
+
+# Initialize Google ADK
+try:
+    from init_adk import init_adk
+    init_adk()
+except ImportError:
+    print("⚠️  Could not import init_adk.py")
+
+from multilingual_wrapper import multilingual_wrapper
 
 
 class AgentEngineApp(AdkApp):
@@ -167,7 +179,7 @@ if __name__ == "__main__":
 
     if args.local:
         import asyncio
-        from .agent import root_agent
+        from agent import root_agent
         from google.adk.sessions import InMemorySessionService
         from google.adk.runners import Runner
         from google.genai import types
@@ -175,9 +187,13 @@ if __name__ == "__main__":
         print("\n==== Local Podcast Agent Test ====")
         city = input(f"Enter city for local news (default: {config.default_city}): ").strip() or config.default_city
         length = input("Enter desired podcast length (minutes): ")
+        user_lang = input("Enter your language code (e.g., en, es, fr, de, zh): ").strip() or "en"
 
         prompt = f"Create a {length}-minute podcast for {city}."
-        message = types.Content(role="user", parts=[types.Part.from_text(text=prompt)])
+
+        # Multilingual: translate prompt to English if needed
+        english_prompt = asyncio.run(multilingual_wrapper.translate_to_english(prompt, user_lang)) if user_lang != "en" else prompt
+        message = types.Content(role="user", parts=[types.Part.from_text(text=english_prompt)])
 
         session_service = InMemorySessionService()
         session = session_service.create_session_sync(user_id="local_user", app_name="local_test")
@@ -192,9 +208,16 @@ if __name__ == "__main__":
                     if hasattr(event.content, "parts"):
                         for part in event.content.parts:
                             if hasattr(part, "text"):
-                                print(part.text)
+                                # Multilingual: translate response back to user's language
+                                output_text = part.text
+                                if user_lang != "en":
+                                    output_text = asyncio.run(multilingual_wrapper.translate_from_english(output_text, user_lang))
+                                print(output_text)
                     elif hasattr(event.content, "text"):
-                        print(event.content.text)
+                        output_text = event.content.text
+                        if user_lang != "en":
+                            output_text = asyncio.run(multilingual_wrapper.translate_from_english(output_text, user_lang))
+                        print(output_text)
                 elif hasattr(event, "text"):
                     print(event.text)
                 else:

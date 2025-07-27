@@ -1,0 +1,22 @@
+# News Podcast Agent - Simplified Dependencies
+# Essential packages for the news podcast agent
+
+# Environment and configuration
+python-dotenv==1.0.0
+
+# HTTP requests for APIs
+requests==2.31.0
+
+# News API client
+newsapi-python==0.2.6
+
+# Google Generative AI for Gemini
+google-generativeai==0.3.2
+
+# ElevenLabs for TTS
+elevenlabs==0.2.26
+
+# FastAPI for web framework (if needed)
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0 
