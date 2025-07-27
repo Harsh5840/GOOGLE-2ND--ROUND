@@ -481,7 +481,7 @@ export default function UrbanPulseDashboard() {
       console.error("Error sending message:", error)
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        text: "Sorry, I encountered an error. Please try again.",
+        text: "I'm having trouble processing your request right now. Please try again in a moment.",
         sender: "bot",
         timestamp: new Date(),
       }

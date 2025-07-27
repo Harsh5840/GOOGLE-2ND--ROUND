@@ -41,7 +41,7 @@ gcloud run deploy city-api-gateway \
   --region us-central1 \
   --project city-project-466410 \
   --allow-unauthenticated \
-  --set-env-vars="GOOGLE_CLOUD_PROJECT=city-project-466410,GOOGLE_CLOUD_LOCATION=us-central1"
+  --set-env-vars="GOOGLE_CLOUD_PROJECT=city-project-466410,GOOGLE_CLOUD_LOCATION=us-central1,ORCHESTRATOR_URL=https://city-orchestrator-ixlmqkeuva-uc.a.run.app"
 
 # Get the URL
 API_GATEWAY_URL=$(gcloud run services describe city-api-gateway --region=us-central1 --format="value(status.url)")
