@@ -1,24 +1,23 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyBpnW9OuhyfCKC9x8ky8uKHkXsPA9YzBYQ",
-  authDomain: "causal-galaxy-415009.firebaseapp.com",
-  projectId: "causal-galaxy-415009",
-  storageBucket: "causal-galaxy-415009.firebasestorage.app",
-  messagingSenderId: "822987556610",
-  appId: "1:822987556610:web:45a6413036f86d64b6e41b",
-  measurementId: "G-TH1S24RY9E"
+  apiKey: "AIzaSyAbjrj9QScVJkFAt7J33B3WpakOHK2omTk",
+  authDomain: "city-project-466410.firebaseapp.com",
+  projectId: "city-project-466410",
+  storageBucket: "city-project-466410.firebasestorage.app",
+  messagingSenderId: "303784709433",
+  appId: "1:303784709433:web:e578345206b3c899f32ce8"
 };
 
 // Initialize Firebase
-export const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const db = getFirestore(app);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-// Initialize Analytics only on client side
-export const analytics = typeof window !== 'undefined' ? getAnalytics(app) : null;
+export { app, auth, db };
