@@ -8,12 +8,20 @@ import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, Response
 
-ORCHESTRATOR_URL = os.getenv("ORCHESTRATOR_URL", "http://localhost:8000")
+ORCHESTRATOR_URL = os.getenv("ORCHESTRATOR_URL", "https://city-orchestrator-ixlmqkeuva-uc.a.run.app/")
 NEWS_API_URL = os.getenv("NEWS_API_URL", "http://localhost:5001")
 
 HTTPX_TIMEOUT = 30.0  # seconds
 
 app = FastAPI()
+
+@app.get("/")
+async def root():
+    return {"message": "City Project API Gateway is running!"}
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "orchestrator_url": ORCHESTRATOR_URL}
 
 # Enable CORS for all origins and all routes
 app.add_middleware(

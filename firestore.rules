@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Allow authenticated users to read/write their own data
+    match /user_profiles/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    match /user_query_history/{docId} {
+      allow read, write: if request.auth != null && resource.data.user_id == request.auth.uid;
+    }
+    
+    // Allow public read access to unified data
+    match /unified_data/{docId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // Allow authenticated users to manage events
+    match /events/{eventId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // Allow authenticated users to manage event photos
+    match /event_photos/{photoId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    // Allow authenticated users to manage notifications
+    match /notifications/{notificationId} {
+      allow read, write: if request.auth != null && resource.data.user_id == request.auth.uid;
+    }
+  }
+} 
