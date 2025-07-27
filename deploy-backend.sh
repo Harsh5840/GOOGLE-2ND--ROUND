@@ -22,14 +22,16 @@ print_success() {
     echo -e "${GREEN}[SUCCESS]${NC} $1"
 }
 
-# Deploy Orchestrator
-print_status "Deploying Orchestrator..."
-chmod +x deploy-orchestrator.sh
-./deploy-orchestrator.sh
+# Deploy Orchestrator (Simplified version for testing)
+print_status "Deploying Orchestrator (Simplified)..."
+chmod +x deploy-orchestrator-simple.sh
+./deploy-orchestrator-simple.sh
 
 # Get orchestrator URL
 ORCHESTRATOR_URL=$(gcloud run services describe city-orchestrator --region=$REGION --format="value(status.url)")
 print_success "Orchestrator URL: $ORCHESTRATOR_URL"
+
+cd /home/cafo/git/city-proj/
 
 # Deploy API Gateway
 print_status "Deploying API Gateway..."

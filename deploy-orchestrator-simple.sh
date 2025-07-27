@@ -1,9 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Deploy Orchestrator with original main.py
+# Deploy Orchestrator with simplified main.py for testing
 set -e
 
-echo "🚀 Deploying City Project Orchestrator with original main.py..."
+echo "🚀 Deploying City Project Orchestrator (Simplified Version)..."
 
 # Create a temporary deployment directory
 TEMP_DIR=$(mktemp -d)
@@ -15,8 +15,9 @@ cp -r shared "$TEMP_DIR/"
 cp -r agents "$TEMP_DIR/"
 cp -r tools "$TEMP_DIR/"
 
-# Copy orchestrator files
+# Copy orchestrator files but use simplified main.py
 cp -r apps/orchestrator/* "$TEMP_DIR/"
+cp apps/orchestrator/main_simple.py "$TEMP_DIR/main.py"
 
 # Create uploads directory
 mkdir -p "$TEMP_DIR/uploads"
@@ -31,7 +32,7 @@ WORKDIR /app
 COPY . .
 
 # Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements_simple.txt
 
 # Create uploads directory
 RUN mkdir -p uploads
