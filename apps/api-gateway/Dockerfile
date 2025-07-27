@@ -6,11 +6,11 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY . .
+# Copy simple server file
+COPY server_simple.py server.py
 
 # Expose port
-EXPOSE 5000
+EXPOSE 8080
 
 # Run the application
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "5000"] 
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8080"] 
