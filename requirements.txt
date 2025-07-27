@@ -19,7 +19,10 @@ python-multipart~=0.0.6
 # News API client
 newsapi-python~=0.2.6
 
+# Image processing and file handling
+Pillow~=10.0.0
 
+# Google Cloud and AI Platform
 google-cloud-texttospeech
 google-auth
 google-auth-oauthlib
@@ -27,3 +30,13 @@ google-auth-httplib2
 vertexai
 google-generativeai
 requests
+
+# Additional dependencies
+firebase-admin
+tiktoken
+google-cloud-firestore
+praw
+tweepy
+googlemaps
+setuptools
+textblob

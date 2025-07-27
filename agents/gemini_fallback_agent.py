@@ -40,5 +40,8 @@ async def run_gemini_fallback_agent(query: str, user_id: str = "testuser", sessi
     if user_lang != 'en':
         result = await multilingual_wrapper.translate_from_english(result.strip(), user_lang)
     
+    from shared.utils.logger import log_event
+    log_event("GeminiFallback", f"Generated response for user {user_id}: {len(result)} characters")
+    
     return result.strip()
 

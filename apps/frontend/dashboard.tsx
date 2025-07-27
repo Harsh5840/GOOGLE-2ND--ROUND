@@ -54,9 +54,10 @@ import Sidebar from "./components/Sidebar"
 import Notifications from "./components/Notifications"
 import Chat from "./components/Chat"
 import ReportModal from "./components/ReportModal"
+import PhotoUpload from "./components/PhotoUpload"
 import { getSeverityColor, formatTimeAgo } from "./lib/utils"
 
-import { sendChatMessage, getLocationMood } from "@/lib/api"
+import { sendChatMessage, getLocationMoodWithDisplay, getBestRouteWithMood, getMustVisitPlacesWithMood } from "@/lib/api"
 import { ChatMessage } from "@/types/chat"
 import LoginButton from "./components/LoginButton";
 
@@ -294,9 +295,9 @@ export default function UrbanPulseDashboard() {
   const [selectedEvent, setSelectedEvent] = useState<CityEvent | null>(null)
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
-      id: 1,
-      type: "bot",
-      message: "Hi! I'm your city assistant. Ask me anything about traffic, events, or city services.",
+      id: "1",
+      sender: "bot",
+      text: "Hi! I'm your city assistant. Ask me anything about traffic, events, or city services.",
       timestamp: new Date(Date.now() - 60000),
     },
   ])
@@ -322,6 +323,7 @@ export default function UrbanPulseDashboard() {
   const [moodLoading, setMoodLoading] = useState(false)
   const [moodError, setMoodError] = useState<string | null>(null)
   const [selectedLanguage, setSelectedLanguage] = useState("en")
+  const [locationData, setLocationData] = useState<any>(null)
 
   // Check if mobile
   useEffect(() => {
@@ -364,12 +366,12 @@ export default function UrbanPulseDashboard() {
   useEffect(() => {
     setMoodLoading(true)
     setMoodError(null)
-    getLocationMood("New York City")
-      .then((data) => {
+    getLocationMoodWithDisplay("New York City")
+      .then((data: any) => {
         setLocationMood(data)
         setMoodLoading(false)
       })
-      .catch((err) => {
+      .catch((err: any) => {
         setMoodError("Could not fetch city mood data.")
         setMoodLoading(false)
       })
@@ -411,9 +413,9 @@ export default function UrbanPulseDashboard() {
     if (!chatInput.trim()) return
 
     const userMessage: ChatMessage = {
-      id: Date.now(),
-      type: "user",
-      message: chatInput,
+      id: Date.now().toString(),
+      text: chatInput,
+      sender: "user",
       timestamp: new Date(),
     }
 
@@ -425,28 +427,32 @@ export default function UrbanPulseDashboard() {
       // Replace with actual user ID from Firebase Auth
       const userId = "test-user"
       const response = await sendChatMessage(userId, chatInput, selectedLanguage)
-
       const botMessage: ChatMessage = {
-        id: Date.now() + 1,
-        type: "bot",
-        message: response.reply,
+        id: (Date.now() + 1).toString(),
+        text: response.reply,
+        sender: "bot",
         timestamp: new Date(),
-        entities: response.entities,
+        locationData: response.location_data, // Add location data for map display
       }
 
       setChatMessages((prev) => [...prev, botMessage])
-
-      // If entities contain map markers, update the map
-      if (response.entities && response.entities.events) {
-        const events = response.entities.events
-        setSelectedEvent(events.length > 0 ? events[0] : null)
+      
+      // If there's location data, display it on the map
+      if (response.location_data && response.location_data.locations_to_display) {
+        // Update the map with location data
+        setLocationData(response.location_data)
+        console.log("Location data received:", response.location_data.locations_to_display)
+      } else {
+        // Clear location data if no new data
+        setLocationData(null)
       }
+      
     } catch (error) {
       console.error("Error sending message:", error)
       const errorMessage: ChatMessage = {
-        id: Date.now() + 1,
-        type: "bot",
-        message: "Sorry, I'm having trouble connecting to the server. Please try again later.",
+        id: (Date.now() + 1).toString(),
+        text: "Sorry, I encountered an error. Please try again.",
+        sender: "bot",
         timestamp: new Date(),
       }
       setChatMessages((prev) => [...prev, errorMessage])
@@ -685,6 +691,7 @@ export default function UrbanPulseDashboard() {
               eventTypes={eventTypes}
               isDarkMode={isDarkMode}
               zones={mapZones}
+              locationData={locationData}
             />
           </div>
         </div>
@@ -725,6 +732,9 @@ export default function UrbanPulseDashboard() {
         handleSubmitReport={handleSubmitReport}
         eventTypes={eventTypes}
       />
+
+      {/* Photo Upload Component */}
+      <PhotoUpload />
     </div>
   )
 }
