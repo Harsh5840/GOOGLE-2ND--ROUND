@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { ChatResponse } from '@/types/chat';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
 
 export async function sendChatMessage(userId: string, message: string): Promise<ChatResponse> {
   try {
