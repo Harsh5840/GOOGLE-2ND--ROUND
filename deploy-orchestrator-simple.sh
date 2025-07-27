@@ -1,9 +1,9 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
-# Deploy Orchestrator with proper project structure
+# Deploy Orchestrator with original main.py
 set -e
 
-echo "🚀 Deploying City Project Orchestrator..."
+echo "🚀 Deploying City Project Orchestrator with original main.py..."
 
 # Create a temporary deployment directory
 TEMP_DIR=$(mktemp -d)
@@ -62,4 +62,8 @@ cd /home/cafo/git/city-proj
 rm -rf "$TEMP_DIR"
 
 echo "✅ Orchestrator deployed successfully!"
-echo "🌐 URL: $ORCHESTRATOR_URL" 
+echo "🌐 URL: $ORCHESTRATOR_URL"
+echo ""
+echo "🧪 Test the deployment:"
+echo "curl $ORCHESTRATOR_URL/"
+echo "curl -X POST $ORCHESTRATOR_URL/chat -H 'Content-Type: application/json' -d '{\"user_id\": \"test\", \"message\": \"hello\"}'" 
