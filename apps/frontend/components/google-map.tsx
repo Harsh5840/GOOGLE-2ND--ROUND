@@ -27,11 +27,11 @@ interface Reporter {
 }
 
 interface Event {
-  id: string
+  id: number
   type: string
   title: string
   location: string
-  coordinates: { lat: number; lng: number }
+  coordinates: { x: number; y: number }
   severity: string
   summary: string
   reporter: Reporter
@@ -64,6 +64,13 @@ interface MapProps {
   eventTypes: EventType[]
   isDarkMode: boolean
   zones?: Zone[]
+  locationData?: {
+    locations_to_display?: any[]
+    mood_data?: any
+    route_details?: any
+    places?: any[]
+    summary?: string
+  }
 }
 
 export default function GoogleMap({
@@ -73,6 +80,7 @@ export default function GoogleMap({
   eventTypes,
   isDarkMode,
   zones = [],
+  locationData,
 }: MapProps) {
   const mapRef = useRef<HTMLDivElement>(null)
   const mapInstanceRef = useRef<any>(null)
@@ -81,7 +89,7 @@ export default function GoogleMap({
   const [mapError, setMapError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Convert percentage coordinates to lat/lng (approximate Bengaluru area)
+  // Convert percentage coordinates to lat/lng (approximate NYC area)
   const convertToLatLng = (x: number, y: number) => {
     // Bengaluru bounds approximately
     const bounds = {
@@ -97,23 +105,9 @@ export default function GoogleMap({
     return { lat, lng }
   }
 
-  // Convert lat/lng to percentage coordinates
-  const convertToPercentage = (lat: number, lng: number) => {
-    const bounds = {
-      north: 13.1737,
-      south: 12.7343,
-      east: 77.8827,
-      west: 77.3791,
-    }
-
-    const x = ((lng - bounds.west) / (bounds.east - bounds.west)) * 100
-    const y = ((bounds.north - lat) / (bounds.north - bounds.south)) * 100
-
-    return { x, y }
-  }
-
-  // Convert zone coordinates to polygon
+  // Convert zone coordinates to Google Maps polygon coordinates
   const convertZoneToPolygon = (zone: Zone) => {
+    const { x, y, width, height } = zone.coordinates
     const bounds = {
       north: 13.1737,
       south: 12.7343,
@@ -121,88 +115,120 @@ export default function GoogleMap({
       west: 77.3791,
     }
 
-    const centerX = zone.coordinates.x
-    const centerY = zone.coordinates.y
-    const width = zone.coordinates.width
-    const height = zone.coordinates.height
+    if (zone.shape === "blob") {
+      // Create organic blob-like shape
+      const centerX = x + width / 2
+      const centerY = y + height / 2
+      const radiusX = width / 2
+      const radiusY = height / 2
+      
+      const points = []
+      const numPoints = 12
+      
+      for (let i = 0; i < numPoints; i++) {
+        const angle = (i / numPoints) * 2 * Math.PI
+        const randomRadiusX = radiusX * (0.7 + Math.random() * 0.6)
+        const randomRadiusY = radiusY * (0.7 + Math.random() * 0.6)
+        
+        const pointX = centerX + randomRadiusX * Math.cos(angle)
+        const pointY = centerY + randomRadiusY * Math.sin(angle)
+        
+        points.push({
+          lat: bounds.south + (bounds.north - bounds.south) * (1 - pointY / 100),
+          lng: bounds.west + (bounds.east - bounds.west) * (pointX / 100),
+        })
+      }
+      
+      return points
+    } else {
+      // Default rectangle shape
+      const topLeft = {
+        lat: bounds.south + (bounds.north - bounds.south) * (1 - y / 100),
+        lng: bounds.west + (bounds.east - bounds.west) * (x / 100),
+      }
+      const topRight = {
+        lat: bounds.south + (bounds.north - bounds.south) * (1 - y / 100),
+        lng: bounds.west + (bounds.east - bounds.west) * ((x + width) / 100),
+      }
+      const bottomRight = {
+        lat: bounds.south + (bounds.north - bounds.south) * (1 - (y + height) / 100),
+        lng: bounds.west + (bounds.east - bounds.west) * ((x + width) / 100),
+      }
+      const bottomLeft = {
+        lat: bounds.south + (bounds.north - bounds.south) * (1 - (y + height) / 100),
+        lng: bounds.west + (bounds.east - bounds.west) * (x / 100),
+      }
 
-    const centerLat = bounds.south + (bounds.north - bounds.south) * (1 - centerY / 100)
-    const centerLng = bounds.west + (bounds.east - bounds.west) * (centerX / 100)
-
-    const latOffset = (bounds.north - bounds.south) * (height / 100) / 2
-    const lngOffset = (bounds.east - bounds.west) * (width / 100) / 2
-
-    const polygon = [
-      { lat: centerLat - latOffset, lng: centerLng - lngOffset },
-      { lat: centerLat - latOffset, lng: centerLng + lngOffset },
-      { lat: centerLat + latOffset, lng: centerLng + lngOffset },
-      { lat: centerLat + latOffset, lng: centerLng - lngOffset },
-    ]
-
-    return polygon
+      return [topLeft, topRight, bottomRight, bottomLeft]
+    }
   }
 
-  // Get severity color
   const getSeverityColor = (severity: string) => {
-    switch (severity.toLowerCase()) {
+    switch (severity) {
+      case "critical":
+        return "#dc2626"
       case "high":
-        return "#ef4444"
+        return "#ea580c"
       case "medium":
-        return "#f59e0b"
+        return "#ca8a04"
       case "low":
-        return "#10b981"
+        return "#16a34a"
       default:
         return "#6b7280"
     }
   }
 
-  // Create custom marker for events
   const createCustomMarker = (event: Event) => {
-    const eventType = eventTypes.find(type => type.id === event.type)
-    const severityColor = getSeverityColor(event.severity)
-    
-    // Create marker element with event type emoji and severity indicator
-    const markerElement = document.createElement('div')
-    markerElement.className = 'custom-marker'
-    markerElement.style.cssText = `
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: ${eventType?.gradient || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'};
-      border: 3px solid ${severityColor};
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-      color: white;
-      font-weight: bold;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-      cursor: pointer;
-      transition: all 0.3s ease;
-      position: relative;
+    const eventType = eventTypes.find((type) => type.id === event.type)
+    const color = eventType?.color || "#6b7280"
+    // Use custom emoji if available, otherwise fall back to event type emoji, then to pin
+    const emoji = event.customEmoji || eventType?.emoji || "📍"
+
+    // Check if we're on mobile for optimized marker size
+    const isMobile = window.innerWidth < 768
+    const markerSize = isMobile ? 36 : 48
+
+    // Create optimized custom marker icon for mobile - removed animations for smoothness
+    const svgMarker = `
+      <svg width="${markerSize}" height="${markerSize}" viewBox="0 0 ${markerSize} ${markerSize}" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="grad${event.id}" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:${color};stop-opacity:1" />
+            <stop offset="100%" style="stop-color:${color}90;stop-opacity:1" />
+          </linearGradient>
+          <filter id="shadow${event.id}" x="-50%" y="-50%" width="200%" height="200%">
+            <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="rgba(0,0,0,0.3)"/>
+          </filter>
+        </defs>
+        <circle cx="${markerSize/2}" cy="${markerSize/2}" r="${markerSize/2 - 2}" fill="url(#grad${event.id})" stroke="white" stroke-width="2" filter="url(#shadow${event.id})"/>
+        <circle cx="${markerSize/2}" cy="${markerSize/2}" r="${markerSize/4}" fill="white" opacity="0.9"/>
+        <circle cx="${markerSize/2}" cy="${markerSize/2}" r="${markerSize/8}" fill="${color}" opacity="0.8"/>
+        ${event.likes > 10 ? `<circle cx="${markerSize * 0.67}" cy="${markerSize * 0.33}" r="4" fill="#ef4444" stroke="white" stroke-width="1"/>` : ""}
+        <text x="${markerSize/2}" y="${markerSize * 0.65}" text-anchor="middle" font-size="${isMobile ? '16' : '20'}" font-family="Segoe UI Emoji, Apple Color Emoji, Noto Color Emoji, sans-serif">${emoji}</text>
+      </svg>
     `
 
-    // Add event type emoji
-    markerElement.innerHTML = eventType?.emoji || '📍'
-    
-    // Add pulse animation for high severity events
-    if (event.severity.toLowerCase() === 'high') {
-      markerElement.style.animation = 'pulse 2s infinite'
+    return {
+      url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svgMarker)}`,
+      scaledSize: window.google ? new window.google.maps.Size(markerSize, markerSize) : undefined,
+      anchor: window.google ? new window.google.maps.Point(markerSize/2, markerSize/2) : undefined,
+      // Optimize for mobile performance
+      optimized: true,
     }
-
-    return markerElement
   }
 
-  // Format time ago
+  // Accepts Date or string, returns "now", "Xm", or "Xh"
   const formatTimeAgo = (timestamp: Date | string) => {
-    const now = new Date()
-    const eventTime = new Date(timestamp)
-    const diffInMinutes = Math.floor((now.getTime() - eventTime.getTime()) / (1000 * 60))
-
-    if (diffInMinutes < 1) return "Just now"
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`
-    return `${Math.floor(diffInMinutes / 1440)}d ago`
+    let dateObj: Date
+    if (timestamp instanceof Date) {
+      dateObj = timestamp
+    } else {
+      dateObj = new Date(timestamp)
+    }
+    const minutes = Math.floor((Date.now() - dateObj.getTime()) / 60000)
+    if (minutes < 1) return "now"
+    if (minutes < 60) return `${minutes}m`
+    return `${Math.floor(minutes / 60)}h`
   }
 
   const initMap = () => {
@@ -404,17 +430,14 @@ export default function GoogleMap({
               const eventType = eventTypes.find((type) => type.id === event.type)
               const color = eventType?.color || "#6b7280"
               const emoji = event.customEmoji || eventType?.emoji || "📍"
-              
-              // Convert lat/lng coordinates to percentage for fallback map
-              const percentageCoords = convertToPercentage(event.coordinates.lat, event.coordinates.lng)
 
               return (
                 <div
                   key={event.id}
                   className="absolute cursor-pointer transform -translate-x-1/2 -translate-y-1/2 hover:scale-110 transition-all duration-300"
                   style={{
-                    left: `${percentageCoords.x}%`,
-                    top: `${percentageCoords.y}%`,
+                    left: `${event.coordinates.x}%`,
+                    top: `${event.coordinates.y}%`,
                   }}
                   onClick={() => onEventSelect(event)}
                 >
@@ -475,8 +498,8 @@ export default function GoogleMap({
     // Prevent duplicate script tags
     if (!document.querySelector('script[data-google-maps]')) {
       const script = document.createElement("script")
-      // TODO: Replace 'YOUR_API_KEY_HERE' with your actual Google Maps API key
-      script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyAabmFAVOqMWF96Yui6THYrkToNgrbNQXs&callback=initMap&libraries=places&v=weekly`
+      const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyAabmFAVOqMWF96Yui6THYrkToNgrbNQXs'
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&callback=initMap&libraries=places&v=weekly`
       script.async = true
       script.defer = true
       script.setAttribute("data-google-maps", "true")
@@ -484,15 +507,15 @@ export default function GoogleMap({
         handleGoogleMapsError(new Error("Failed to load Google Maps script"))
       }
 
-       script.onload = () => {
-         // Additional check after script loads
-         if (!window.google || !window.google.maps) {
-           handleGoogleMapsError(new Error("Google Maps API not available"))
-         }
-       }
+      script.onload = () => {
+        // Additional check after script loads
+        if (!window.google || !window.google.maps) {
+          handleGoogleMapsError(new Error("Google Maps API not available"))
+        }
+      }
 
-       document.head.appendChild(script)
-     }
+      document.head.appendChild(script)
+    }
 
     // Set up a timeout to handle cases where the script loads but Google Maps fails
     const timeoutId = setTimeout(() => {
@@ -585,35 +608,18 @@ export default function GoogleMap({
     markersRef.current.forEach((marker) => marker.setMap(null))
     markersRef.current = []
 
-    // Add new markers with dedicated event type icons
+    // Add new markers with mobile optimizations
     const isMobile = window.innerWidth < 768
     
     // Add event markers
     events.forEach((event) => {
-      const position = { lat: event.coordinates.lat, lng: event.coordinates.lng }
-      
-      // Create custom marker with event type emoji
-      const eventType = eventTypes.find(type => type.id === event.type)
-      const severityColor = getSeverityColor(event.severity)
-      
+      const position = convertToLatLng(event.coordinates.x, event.coordinates.y)
       const marker = new window.google.maps.Marker({
         position,
         map: mapInstanceRef.current,
+        icon: createCustomMarker(event),
         title: event.title,
-        label: {
-          text: eventType?.emoji || '📍',
-          className: `custom-marker-label ${event.severity.toLowerCase() === 'high' ? 'high-severity' : ''}`,
-          fontSize: '20px',
-          fontWeight: 'bold'
-        },
-        icon: {
-          path: window.google.maps.SymbolPath.CIRCLE,
-          scale: 0,
-          fillColor: eventType?.color || '#6b7280',
-          fillOpacity: 1,
-          strokeColor: severityColor,
-          strokeWeight: 3
-        },
+        // Mobile optimizations
         optimized: true,
         zIndex: event.likes > 10 ? 1000 : 100, // Popular events on top
       })
