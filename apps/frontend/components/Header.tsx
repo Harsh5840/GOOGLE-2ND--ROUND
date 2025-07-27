@@ -4,6 +4,7 @@ import { Activity, Menu, Users } from "lucide-react"
 
 interface HeaderProps {
   isDarkMode: boolean
+  setIsDarkMode?: () => void
   isMobile: boolean
   sidebarOpen: boolean
   setSidebarOpen: (open: boolean) => void
@@ -17,10 +18,13 @@ interface HeaderProps {
   notificationRef: React.RefObject<HTMLDivElement>
   notifications: any[]
   unreadNotifications: number
+  user?: any
+  onLogout?: () => void
 }
 
 const Header: React.FC<HeaderProps> = ({
   isDarkMode,
+  setIsDarkMode,
   isMobile,
   sidebarOpen,
   setSidebarOpen,
