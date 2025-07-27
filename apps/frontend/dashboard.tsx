@@ -54,12 +54,12 @@ import Sidebar from "./components/Sidebar"
 import Notifications from "./components/Notifications"
 import Chat from "./components/Chat"
 import ReportModal from "./components/ReportModal"
-import PhotoUpload from "./components/PhotoUpload"
+
 import { getSeverityColor, formatTimeAgo } from "./lib/utils"
 
 import { sendChatMessage, getLocationMoodWithDisplay, getBestRouteWithMood, getMustVisitPlacesWithMood, getAllUserReports } from "@/lib/api"
 import { ChatMessage } from "@/types/chat"
-import LoginButton from "./components/LoginButton";
+
 
 interface CityEvent {
   id: number;
@@ -150,75 +150,7 @@ const trendingLocations = [
   { name: "Park Avenue", events: 3, trend: "-5%", change: "down" },
 ]
 
-// Color-coded zones for different areas (organic blemish-like shapes)
-const mapZones = [
-  {
-    id: "downtown-traffic",
-    name: "Downtown Traffic Zone",
-    type: "traffic" as const,
-    color: "#ef4444", // Red for heavy traffic
-    opacity: 0.25,
-    coordinates: { x: 40, y: 50, width: 8, height: 6 },
-    description: "High traffic congestion area",
-    severity: "high" as const,
-    shape: "blob" as const, // Organic blob shape
-  },
-  {
-    id: "industrial-pollution",
-    name: "Industrial Pollution Zone",
-    type: "pollution" as const,
-    color: "#dc2626", // Dark red for pollution
-    opacity: 0.3,
-    coordinates: { x: 80, y: 30, width: 6, height: 4 },
-    description: "High pollution levels detected",
-    severity: "high" as const,
-    shape: "blob" as const, // Organic blob shape
-  },
-  {
-    id: "park-happiness",
-    name: "Green Park Zone",
-    type: "happiness" as const,
-    color: "#10b981", // Green for happy/positive area
-    opacity: 0.2,
-    coordinates: { x: 15, y: 55, width: 10, height: 8 },
-    description: "High community satisfaction area",
-    severity: "low" as const,
-    shape: "blob" as const, // Organic blob shape
-  },
-  {
-    id: "business-safety",
-    name: "Business District Safety",
-    type: "safety" as const,
-    color: "#3b82f6", // Blue for safety
-    opacity: 0.15,
-    coordinates: { x: 55, y: 35, width: 7, height: 5 },
-    description: "Enhanced police presence and safety",
-    severity: "low" as const,
-    shape: "blob" as const, // Organic blob shape
-  },
-  {
-    id: "rush-hour-traffic",
-    name: "Rush Hour Traffic",
-    type: "traffic" as const,
-    color: "#f97316", // Orange for moderate traffic
-    opacity: 0.25,
-    coordinates: { x: 55, y: 35, width: 8, height: 6 },
-    description: "Rush hour traffic congestion",
-    severity: "medium" as const,
-    shape: "blob" as const, // Organic blob shape
-  },
-  {
-    id: "coastal-wind",
-    name: "Coastal Wind Zone",
-    type: "pollution" as const,
-    color: "#f59e0b", // Amber for wind/pollution
-    opacity: 0.15,
-    coordinates: { x: 85, y: 75, width: 5, height: 6 },
-    description: "Wind advisory and air quality concerns",
-    severity: "medium" as const,
-    shape: "blob" as const, // Organic blob shape
-  },
-]
+// Zones removed as requested by user
 
 const recentActivity = [
   { user: "Alex Chen", action: "reported traffic jam", location: "Main St", time: "2m ago", type: "traffic" },
@@ -270,8 +202,38 @@ const notifications = [
   },
 ]
 
-export default function UrbanPulseDashboard() {
-  const [isDarkMode, setIsDarkMode] = useState(false)
+interface CityScapeDashboardProps {
+  user?: {
+    id: string
+    name: string
+    email: string
+    avatar: string
+    location: string
+    preferences?: any
+  }
+  onLogout?: () => void
+  isDarkMode: boolean
+  setIsDarkMode: (darkMode: boolean) => void
+}
+
+export default function CityScapeDashboard({ 
+  user, 
+  onLogout, 
+  isDarkMode: propIsDarkMode = false, 
+  setIsDarkMode: propSetIsDarkMode = () => {} 
+}: CityScapeDashboardProps) {
+  const [isDarkMode, setIsDarkMode] = useState(propIsDarkMode)
+  
+  // Sync dark mode with parent component
+  useEffect(() => {
+    setIsDarkMode(propIsDarkMode)
+  }, [propIsDarkMode])
+  
+  const handleDarkModeToggle = () => {
+    const newDarkMode = !isDarkMode
+    setIsDarkMode(newDarkMode)
+    propSetIsDarkMode(newDarkMode)
+  }
   const [isMobile, setIsMobile] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [mobileChatOpen, setMobileChatOpen] = useState(false)
@@ -296,8 +258,8 @@ export default function UrbanPulseDashboard() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([
     {
       id: "1",
-      type: "bot",
-      message: "Hi! I'm your city assistant. Ask me anything about traffic, events, or city services.",
+      sender: "bot",
+      text: "Hi! I'm your city assistant. Ask me anything about traffic, events, or city services.",
       timestamp: new Date(Date.now() - 60000),
     },
   ])
@@ -325,6 +287,7 @@ export default function UrbanPulseDashboard() {
   const [moodLoading, setMoodLoading] = useState(false)
   const [moodError, setMoodError] = useState<string | null>(null)
   const [locationData, setLocationData] = useState<any>(null)
+  const [currentCity, setCurrentCity] = useState<string>("Bangalore") // Store detected city for chatbot
 
   // Check if mobile
   useEffect(() => {
@@ -395,17 +358,70 @@ export default function UrbanPulseDashboard() {
   }, [])
 
   useEffect(() => {
-    setMoodLoading(true)
-    setMoodError(null)
-    getLocationMoodWithDisplay("Bangalore")
-      .then((data: any) => {
-        setLocationMood(data)
-        setMoodLoading(false)
-      })
-      .catch((err: any) => {
+    const detectUserLocation = async () => {
+      setMoodLoading(true)
+      setMoodError(null)
+      
+      try {
+        // Try to get user's actual location
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            async (position) => {
+              const { latitude, longitude } = position.coords
+              
+              // Reverse geocode to get city name
+              try {
+                const response = await fetch(
+                  `https://api.opencagedata.com/geocode/v1/json?q=${latitude}+${longitude}&key=YOUR_API_KEY&limit=1`
+                )
+                const data = await response.json()
+                const city = data.results[0]?.components?.city || 
+                           data.results[0]?.components?.town || 
+                           data.results[0]?.components?.village || 
+                           "Current Location"
+                
+                setCurrentCity(city) // Store detected city for chatbot
+                const locationData = await getLocationMoodWithDisplay(city)
+                setLocationMood(locationData)
+                setMoodLoading(false)
+              } catch (error) {
+                console.error('Error getting city name:', error)
+                // Fallback to default location
+                setCurrentCity("Bangalore") // Store fallback city for chatbot
+                const locationData = await getLocationMoodWithDisplay("Bangalore")
+                setLocationMood(locationData)
+                setMoodLoading(false)
+              }
+            },
+            async (error) => {
+              console.error('Geolocation error:', error)
+              // Fallback to default location
+              setCurrentCity("Bangalore") // Store fallback city for chatbot
+              const locationData = await getLocationMoodWithDisplay("Bangalore")
+              setLocationMood(locationData)
+              setMoodLoading(false)
+            },
+            {
+              enableHighAccuracy: true,
+              timeout: 10000,
+              maximumAge: 300000 // 5 minutes
+            }
+          )
+        } else {
+          // Geolocation not supported, use default
+          setCurrentCity("Bangalore") // Store fallback city for chatbot
+          const locationData = await getLocationMoodWithDisplay("Bangalore")
+          setLocationMood(locationData)
+          setMoodLoading(false)
+        }
+      } catch (error) {
+        console.error('Location detection error:', error)
         setMoodError("Could not fetch city mood data.")
         setMoodLoading(false)
-      })
+      }
+    }
+    
+    detectUserLocation()
   }, [])
 
   // Auto-scroll chat messages
@@ -438,7 +454,41 @@ export default function UrbanPulseDashboard() {
     setActiveFilters((prev: string[]) => (prev.includes(filterId) ? prev.filter((id: string) => id !== filterId) : [...prev, filterId]))
   }
 
-  const filteredEvents: CityEvent[] = []
+  // Convert user reports to CityEvent format for live feeds
+  const userSubmittedEvents: CityEvent[] = userReports.map((report, index) => ({
+    id: 1000 + index, // Unique ID for user reports
+    type: report.category || 'general',
+    title: report.title || 'Citizen Report',
+    location: report.address || `${report.latitude}, ${report.longitude}`,
+    timestamp: new Date(report.timestamp || Date.now()),
+    severity: report.severity || 'medium',
+    summary: report.summary || report.description || 'User-submitted report',
+    reporter: {
+      name: user?.name || 'Anonymous Citizen',
+      avatar: user?.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.id || 'anonymous'}`,
+      verified: true, // User reports are verified
+      followers: 0
+    },
+    coordinates: { 
+      x: report.longitude ? ((report.longitude + 180) / 360) * 100 : 50, // Convert lng to percentage
+      y: report.latitude ? ((90 - report.latitude) / 180) * 100 : 50 // Convert lat to percentage
+    },
+    likes: Math.floor(Math.random() * 50),
+    comments: Math.floor(Math.random() * 20),
+    shares: Math.floor(Math.random() * 10),
+    bookmarks: Math.floor(Math.random() * 15),
+    image: report.image_url || null,
+    tags: [report.category || 'citizen-report', 'ai-classified'],
+    customEmoji: '📸' // Camera emoji for user reports
+  }))
+
+  const filteredEvents: CityEvent[] = [...userSubmittedEvents].filter(event => 
+    activeFilters.includes(event.type) &&
+    (searchQuery === '' || 
+     event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+     event.summary.toLowerCase().includes(searchQuery.toLowerCase()) ||
+     event.location.toLowerCase().includes(searchQuery.toLowerCase()))
+  )
 
   const handleSendMessage = async () => {
     if (!chatInput.trim()) return
@@ -455,7 +505,7 @@ export default function UrbanPulseDashboard() {
     setIsTyping(true)
 
     try {
-      const response = await sendChatMessage("test", chatInput)
+      const response = await sendChatMessage(currentCity, chatInput)
       
       const botMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
@@ -614,20 +664,23 @@ export default function UrbanPulseDashboard() {
           : "bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100"
       }`}
     >
-      <LoginButton />
+
       {/* Enhanced Header */}
       <Header
         isDarkMode={isDarkMode}
+        setIsDarkMode={handleDarkModeToggle}
         isMobile={isMobile}
         sidebarOpen={sidebarOpen}
         setSidebarOpen={setSidebarOpen}
-        liveStats={liveStats}
-        currentTime={currentTime}
         showNotifications={showNotifications}
         setShowNotifications={setShowNotifications}
-        notificationRef={notificationRef}
         notifications={notifications}
         unreadNotifications={unreadNotifications}
+        notificationRef={notificationRef}
+        currentTime={currentTime}
+        liveStats={liveStats}
+        user={user}
+        onLogout={onLogout}
       />
 
       <div className="flex-1 flex overflow-hidden relative">
@@ -689,7 +742,6 @@ export default function UrbanPulseDashboard() {
               onEventSelect={handleEventSelect}
               eventTypes={eventTypes}
               isDarkMode={isDarkMode}
-              zones={mapZones}
               locationData={locationData}
               userReports={userReports}
               loadingReports={loadingReports}
@@ -710,23 +762,20 @@ export default function UrbanPulseDashboard() {
           </div>
         </div>
 
-        {/* Right Panel - Chat (Hidden on mobile by default) */}
-        <Chat
-          isDarkMode={isDarkMode}
-          isMobile={isMobile}
-          rightPanelCollapsed={rightPanelCollapsed}
-          setRightPanelCollapsed={setRightPanelCollapsed}
-          chatMessages={chatMessages}
-          chatInput={chatInput}
-          setChatInput={setChatInput}
-          isTyping={isTyping}
-          handleSendMessage={handleSendMessage}
-          chatMessagesRef={chatMessagesRef}
-          mobileChatRef={mobileChatRef}
-          mobileChatOpen={mobileChatOpen}
-          mobileChatExpanded={mobileChatExpanded}
-          setMobileChatExpanded={setMobileChatExpanded}
-        />
+        {/* Fixed-Width Chat Panel */}
+        <div className={`${rightPanelCollapsed ? 'w-0' : 'w-80'} transition-all duration-300 flex-shrink-0 border-l ${isDarkMode ? 'border-gray-600' : 'border-gray-200'}`}>
+          <Chat
+            isDarkMode={isDarkMode}
+            rightPanelCollapsed={rightPanelCollapsed}
+            setRightPanelCollapsed={setRightPanelCollapsed}
+            chatMessages={chatMessages}
+            chatInput={chatInput}
+            setChatInput={setChatInput}
+            isTyping={isTyping}
+            handleSendMessage={handleSendMessage}
+            chatMessagesRef={chatMessagesRef}
+          />
+        </div>
       </div>
 
       {/* Enhanced Report Modal */}
@@ -745,8 +794,7 @@ export default function UrbanPulseDashboard() {
         eventTypes={eventTypes}
       />
 
-      {/* Photo Upload Component */}
-      <PhotoUpload />
+
     </div>
   )
 }

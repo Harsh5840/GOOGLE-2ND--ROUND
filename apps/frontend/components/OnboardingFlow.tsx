@@ -29,7 +29,7 @@ import {
   Train,
   Bus,
   Bike,
-  Walking,
+  // Walking, // Not available in lucide-react
   Home,
   Briefcase,
   GraduationCap,
@@ -133,9 +133,19 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     setLoading(true);
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      console.error('Login error:', error);
+      provider.addScope('profile');
+      provider.addScope('email');
+      
+      const result = await signInWithPopup(auth, provider);
+      console.log('Google login successful:', result.user);
+    } catch (error: any) {
+      console.error('Google login error:', error);
+      // Handle specific error cases
+      if (error?.code === 'auth/popup-closed-by-user') {
+        console.log('Login popup was closed by user');
+      } else if (error?.code === 'auth/popup-blocked') {
+        console.log('Login popup was blocked by browser');
+      }
     } finally {
       setLoading(false);
     }

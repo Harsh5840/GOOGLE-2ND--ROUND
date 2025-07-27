@@ -384,50 +384,7 @@ export default function GoogleMap({
               NYC
             </div>
 
-            {/* Zone overlays */}
-            {zones.map((zone) => {
-              const centerX = zone.coordinates.x + zone.coordinates.width / 2
-              const centerY = zone.coordinates.y + zone.coordinates.height / 2
-              const radiusX = zone.coordinates.width / 2
-              const radiusY = zone.coordinates.height / 2
-              
-              // Generate organic blob path
-              const points = []
-              const numPoints = 12
-              for (let i = 0; i < numPoints; i++) {
-                const angle = (i / numPoints) * 2 * Math.PI
-                const randomRadiusX = radiusX * (0.7 + Math.random() * 0.6)
-                const randomRadiusY = radiusY * (0.7 + Math.random() * 0.6)
-                
-                const pointX = centerX + randomRadiusX * Math.cos(angle)
-                const pointY = centerY + randomRadiusY * Math.sin(angle)
-                
-                points.push(`${pointX}% ${pointY}%`)
-              }
-              
-              return (
-                <div
-                  key={zone.id}
-                  className="absolute cursor-pointer hover:opacity-90 transition-opacity duration-300"
-                  style={{
-                    left: `${zone.coordinates.x}%`,
-                    top: `${zone.coordinates.y}%`,
-                    width: `${zone.coordinates.width}%`,
-                    height: `${zone.coordinates.height}%`,
-                    backgroundColor: zone.color,
-                    opacity: isDarkMode ? Math.min(1, zone.opacity + 0.25) : zone.opacity,
-                    clipPath: `polygon(${points.join(', ')})`,
-                    border: isDarkMode ? '2px solid #fff' : undefined,
-                    boxShadow: isDarkMode ? '0 0 12px 4px #0004' : undefined,
-                  }}
-                  title={`${zone.name} - ${zone.description}`}
-                >
-                  <div className="absolute top-1 left-1 text-xs font-bold text-white drop-shadow-lg">
-                    {zone.type === "traffic" ? "🚗" : zone.type === "pollution" ? "🌫️" : zone.type === "happiness" ? "😊" : "🛡️"}
-                  </div>
-                </div>
-              )
-            })}
+            {/* Zone overlays removed as requested by user */}
 
             {/* Event markers */}
             {events.map((event) => {
@@ -657,6 +614,13 @@ export default function GoogleMap({
         )}</div>
               </div>
             </div>
+            
+            <!-- Event Image -->
+            ${event.image ? `
+              <div style="margin-bottom: ${isMobile ? '12px' : '16px'}; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                <img src="${event.image}" alt="${event.title}" style="width: 100%; height: ${isMobile ? '160px' : '200px'}; object-fit: cover; display: block;" />
+              </div>
+            ` : ''}
             
             <!-- Event title and severity -->
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: ${isMobile ? '8px' : '12px'};">

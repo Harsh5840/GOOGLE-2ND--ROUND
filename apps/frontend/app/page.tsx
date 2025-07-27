@@ -1,5 +1,15 @@
-import UrbanPulseDashboard from "../dashboard"
+"use client"
+
+import { useState } from 'react'
+import AuthenticatedApp from '../components/AuthenticatedApp'
 
 export default function Page() {
-  return <UrbanPulseDashboard />
+  const [isDarkMode, setIsDarkMode] = useState(false)
+
+  return (
+    <AuthenticatedApp 
+      isDarkMode={isDarkMode} 
+      setIsDarkMode={setIsDarkMode} 
+    />
+  )
 }
