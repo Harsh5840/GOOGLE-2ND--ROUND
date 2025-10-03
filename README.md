@@ -13,6 +13,7 @@
 
 CityScape is an intelligent, agent-driven platform for real-time city event analysis and prediction. By processing multi-source data streams (social media, user uploads, web scraping), CityScape delivers live insights, proactive alerts, and user-specific summaries through an interactive dashboard. Built on Google Cloud and agentic AI, it empowers cities with actionable intelligence.
 
+🔗 [View Demo](https://drive.google.com/file/d/1Qgih5l2XH7sbEoZK7ZYrtHEn0lTySTb0/view?usp=drive_link)
 ##  Features
 
 -  **Multi-Source Data Ingestion**: Twitter, Reddit, Instagram, geo-tagged uploads, web scraping
