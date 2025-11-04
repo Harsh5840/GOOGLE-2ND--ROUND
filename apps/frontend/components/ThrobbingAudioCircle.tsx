@@ -2,14 +2,37 @@ import React, { useRef, useEffect, useState } from "react";
 
 export default function ThrobbingAudioCircle({ src }: { src: string }) {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const sourceRef = useRef<MediaElementAudioSourceNode | null>(null);
   const [intensity, setIntensity] = useState(0);
 
   useEffect(() => {
     if (!audioRef.current) return;
     const audio = audioRef.current;
+    
+    // Clean up previous connections if they exist
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+    }
+    
+    // Create new audio context
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    audioContextRef.current = ctx;
+    
     const analyser = ctx.createAnalyser();
-    const source = ctx.createMediaElementSource(audio);
+    
+    // Only create source if one doesn't already exist for this audio element
+    let source: MediaElementAudioSourceNode;
+    try {
+      source = ctx.createMediaElementSource(audio);
+      sourceRef.current = source;
+    } catch (error) {
+      // If source already exists, we can't create another one
+      console.warn('MediaElementSource already exists for this audio element');
+      ctx.close();
+      return;
+    }
+    
     source.connect(analyser);
     analyser.connect(ctx.destination);
     analyser.fftSize = 64;
@@ -17,6 +40,7 @@ export default function ThrobbingAudioCircle({ src }: { src: string }) {
 
     let running = true;
     function animate() {
+      if (ctx.state === 'closed') return;
       analyser.getByteFrequencyData(dataArray);
       const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
       setIntensity(avg / 255);
@@ -26,7 +50,11 @@ export default function ThrobbingAudioCircle({ src }: { src: string }) {
 
     return () => {
       running = false;
-      ctx.close();
+      if (ctx.state !== 'closed') {
+        ctx.close();
+      }
+      sourceRef.current = null;
+      audioContextRef.current = null;
     };
   }, [src]);
 

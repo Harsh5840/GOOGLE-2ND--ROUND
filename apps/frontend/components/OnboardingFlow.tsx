@@ -1,44 +1,22 @@
 "use client"
 
 import React, { useState, useEffect } from 'react';
-import { auth, db } from '../lib/firebase';
-import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, User } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { auth } from '../lib/firebase';
+import { User } from 'firebase/auth';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Checkbox } from './ui/checkbox';
-import { Textarea } from './ui/textarea';
 import { 
   MapPin, 
   Car, 
   Building, 
   Calendar, 
-  Users, 
-  Camera, 
   AlertTriangle, 
   Heart,
-  Coffee,
-  Music,
-  ShoppingBag,
-  Gamepad2,
-  BookOpen,
-  Utensils,
-  Plane,
-  Train,
-  Bus,
-  Bike,
-  // Walking, // Not available in lucide-react
-  Home,
   Briefcase,
   GraduationCap,
-  Palette,
-  Dumbbell,
-  TreePine,
-  Globe,
-  Zap,
-  Star,
   Plus,
   ArrowRight,
   Check,
@@ -93,12 +71,12 @@ const interestCategories = [
 ];
 
 interface OnboardingFlowProps {
-  onComplete: (user: User, preferences: UserPreferences) => void;
+  onComplete: (user: any, preferences: UserPreferences) => void;
 }
 
 export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [user, setUser] = useState<User | null>(null);
-  const [step, setStep] = useState<'login' | 'interests' | 'location' | 'complete'>('login');
+  const [step, setStep] = useState<'interests' | 'location' | 'complete'>('interests');
   const [preferences, setPreferences] = useState<UserPreferences>({
     interests: [],
     customInterests: [],
@@ -107,49 +85,17 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     notificationTypes: ['events', 'safety', 'traffic']
   });
   const [customInterest, setCustomInterest] = useState('');
-  const [loading, setLoading] = useState(false);
 
+  // Get current Firebase user
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = auth.onAuthStateChanged((firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
-        // Check if user has completed onboarding
-        const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
-        if (userDoc.exists() && userDoc.data()?.onboardingComplete) {
-          onComplete(firebaseUser, userDoc.data()?.preferences || preferences);
-        } else {
-          setStep('interests');
-        }
-      } else {
-        setUser(null);
-        setStep('login');
       }
     });
 
     return () => unsubscribe();
-  }, [onComplete]);
-
-  const handleGoogleLogin = async () => {
-    setLoading(true);
-    try {
-      const provider = new GoogleAuthProvider();
-      provider.addScope('profile');
-      provider.addScope('email');
-      
-      const result = await signInWithPopup(auth, provider);
-      console.log('Google login successful:', result.user);
-    } catch (error: any) {
-      console.error('Google login error:', error);
-      // Handle specific error cases
-      if (error?.code === 'auth/popup-closed-by-user') {
-        console.log('Login popup was closed by user');
-      } else if (error?.code === 'auth/popup-blocked') {
-        console.log('Login popup was blocked by browser');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, []);
 
   const toggleInterest = (interest: string) => {
     setPreferences(prev => ({
@@ -182,17 +128,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       setStep('location');
     } else if (step === 'location') {
       setStep('complete');
-      // Save user preferences to Firestore
+      // Complete onboarding
       if (user) {
-        await setDoc(doc(db, 'users', user.uid), {
-          email: user.email,
-          displayName: user.displayName,
-          photoURL: user.photoURL,
-          preferences,
-          onboardingComplete: true,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        });
         onComplete(user, preferences);
       }
     }
@@ -208,36 +145,18 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     return true;
   };
 
-  if (step === 'login') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50">
-        <Card className="w-full max-w-md mx-4">
-          <CardHeader className="text-center">
-            <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center mb-4">
-              <MapPin className="w-8 h-8 text-white" />
-            </div>
-            <CardTitle className="text-2xl font-bold">Welcome to CityScape</CardTitle>
-            <CardDescription>
-              Your smart city companion. Get personalized updates about your city.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button 
-              onClick={handleGoogleLogin} 
-              disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700"
-            >
-              {loading ? 'Signing in...' : 'Continue with Google'}
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   if (step === 'interests') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4">
+        {/* Development-only: Skip onboarding button */}
+        {process.env.NODE_ENV === 'development' && (
+          <button
+            onClick={() => onComplete(user, preferences)}
+            className="fixed top-4 right-4 bg-green-500 text-white px-3 py-1 rounded text-sm z-50"
+          >
+            Skip Onboarding (Dev)
+          </button>
+        )}
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">What interests you?</h1>
@@ -325,6 +244,15 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   if (step === 'location') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4">
+        {/* Development-only: Skip onboarding button */}
+        {process.env.NODE_ENV === 'development' && (
+          <button
+            onClick={() => onComplete(user, preferences)}
+            className="fixed top-4 right-4 bg-green-500 text-white px-3 py-1 rounded text-sm z-50"
+          >
+            Skip Onboarding (Dev)
+          </button>
+        )}
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Where are you located?</h1>

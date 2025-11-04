@@ -37,24 +37,16 @@ export default function GoogleLogin({ onLoginSuccess, isDarkMode = false }: Goog
       provider.addScope('email')
       
       const result = await signInWithPopup(auth, provider)
-      const user = result.user
+      console.log('Google login successful:', result.user.email)
       
-      const userData = {
-        id: user.uid,
-        name: user.displayName || 'Smart Citizen',
-        email: user.email || 'citizen@smartcity.com',
-        avatar: user.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.email}`,
-        location: 'Current Location',
-        joinedDate: new Date().toISOString(),
-        isNewUser: true
-      }
+      // The AuthenticatedApp component will handle the auth state change
+      // and redirect to onboarding or dashboard automatically
       
-      onLoginSuccess(userData)
-      setIsLoading(false)
     } catch (error) {
       console.error('Google login error:', error)
-      setIsLoading(false)
       // You could add error state handling here
+    } finally {
+      setIsLoading(false)
     }
   }
 
