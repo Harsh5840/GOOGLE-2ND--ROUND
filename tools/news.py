@@ -1,6 +1,5 @@
 import os
 from dotenv import load_dotenv
-from typing import Dict, Any
 import requests
 from shared.utils.logger import log_event
 

@@ -15,3 +15,15 @@ venv/
 .pytest_cache/
 /cityscape-466810-614cba022fdc.json
 /city-project-466410-a6e56d4e3014.json
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+.vscode/
+node_modules/
+uploads/
+.DS_Store
+.env
+.env.*

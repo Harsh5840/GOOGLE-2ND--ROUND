@@ -58,7 +58,7 @@ def test_firestore_connection():
     print("\n🔗 Testing Firestore Connection...")
     
     try:
-        from tools.firestore import db, initialize_firestore
+        from tools.firestore import db
         
         if db is None:
             print("  ❌ Firestore client is None")

@@ -12,12 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 import os
 import tempfile
 from unittest import mock
 
-import pytest
 
 from app.tools import fetch_local_news, synthesize_speech
 

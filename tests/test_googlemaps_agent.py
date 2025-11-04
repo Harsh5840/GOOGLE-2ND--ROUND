@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import unittest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from tools.maps import get_best_route
 
 class TestGoogleMapsTool(unittest.TestCase):

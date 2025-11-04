@@ -1,4 +1,3 @@
-import os
 import requests
 from dotenv import load_dotenv
 from shared.utils.logger import log_event

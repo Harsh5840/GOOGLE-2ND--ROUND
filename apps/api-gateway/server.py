@@ -6,7 +6,7 @@ import httpx
 import os
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, Response
+from fastapi.responses import Response
 
 ORCHESTRATOR_URL = os.getenv("ORCHESTRATOR_URL", "http://localhost:8000")
 NEWS_API_URL = os.getenv("NEWS_API_URL", "http://localhost:5001")

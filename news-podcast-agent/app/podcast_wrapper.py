@@ -4,13 +4,10 @@ Podcast Agent Wrapper for API Integration
 Provides a simple interface to the existing podcast agent functionality.
 """
 
-import asyncio
-from typing import Optional
 from google.adk.runners import Runner
-from google.adk.agents.invocation_context import InvocationContext
 from google.adk.sessions import InMemorySessionService
 
-from app.agent import PodcastPipeline, NewsResearcher, PodcastScripter, PodcastProducer
+from app.agent import PodcastPipeline
 from app.tools_backup import fetch_local_news, synthesize_speech
 from app.utils.files import get_output_dir
 import logging

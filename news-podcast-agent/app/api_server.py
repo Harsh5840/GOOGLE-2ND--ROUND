@@ -4,16 +4,13 @@ FastAPI server for News Podcast Agent
 Provides REST API endpoints for podcast generation and management.
 """
 
-import os
-import asyncio
 import uuid
 from datetime import datetime
 from typing import Optional, Dict, Any
-from pathlib import Path
 import logging
 logging.basicConfig(level=logging.INFO)
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, File, UploadFile
+from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field

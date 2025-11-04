@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import json
-import logging
 from collections.abc import Sequence
 from typing import Any
 

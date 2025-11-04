@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import json
 from unittest import mock
 
 import pytest
-from google.adk.agent import Agent, AgentContext, AgentResponse
-from google.adk.agent.runner import Runner
-from google.adk.agent.session import InMemorySessionService
+from google.adk.agent import AgentContext, AgentResponse
 
 from app.agent import (
     NewsResearcher,

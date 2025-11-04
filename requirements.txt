@@ -27,3 +27,15 @@ google-auth
 google-auth-oauthlib
 google-auth-httplib2
 vertexai
+
+# Additional dependencies (merged from req.txt)
+requests
+tiktoken
+firebase-admin
+google-cloud-firestore
+asyncpraw
+praw
+tweepy
+googlemaps
+setuptools
+textblob

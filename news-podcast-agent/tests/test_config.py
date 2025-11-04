@@ -15,7 +15,6 @@
 import os
 from unittest import mock
 
-import pytest
 
 from app.config import ResearchConfiguration
 

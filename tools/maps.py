@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Dict, Any, List, Optional
 import googlemaps
 from shared.utils.logger import log_event
 import traceback

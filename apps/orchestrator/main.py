@@ -17,28 +17,20 @@ vertexai.init(
 
 from fastapi import FastAPI, HTTPException, Form, Query
 from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import os
-import asyncio
 from google.cloud import aiplatform
 from shared.utils.logger import log_event
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Any
 import json
 from fastapi import UploadFile, File
-from google.cloud import storage
-from uuid import uuid4
 from datetime import datetime
 
 from agents.agent_router import agent_router
 from agents.gemini_fallback_agent import run_gemini_fallback_agent
 from agents.intent_extractor.agent import extract_intent
-from agents.agglomerator import aggregate_api_results
-from tools.maps import get_must_visit_places_nearby
 from tools.image_upload import upload_event_photo, get_all_event_photos, get_event_photo_by_id
 from tools.reddit import fetch_reddit_posts
-from tools.twitter import fetch_twitter_posts
-from tools.news import fetch_city_news
 from tools.firestore import (
     create_or_update_user_profile,
     get_user_profile,
@@ -59,11 +51,9 @@ from tools.firestore import (
     get_unified_data_from_firestore,
     get_aggregated_location_data_from_firestore,
     refresh_unified_data_for_location,
-    get_unified_data_sources_for_location,
-    clear_empty_cached_data
+    get_unified_data_sources_for_location
 )
-from shared.utils.mood import analyze_sentiment, aggregate_mood
-from shared.utils.user_photos import save_user_photo, fetch_user_photos_nearby
+from shared.utils.user_photos import save_user_photo
 
 # Initialize Google Cloud Vertex AI
 aiplatform.init(project=os.getenv("GCP_PROJECT_ID"), location=os.getenv("GCP_REGION"))
@@ -889,7 +879,7 @@ async def location_mood(
     """
     try:
         # Get mood data using the new maps functionality
-        from tools.maps import get_location_mood_data, get_must_visit_places_nearby, display_locations_on_map
+        from tools.maps import get_location_mood_data, get_must_visit_places_nearby
         
         # Get mood data for the location
         mood_result = get_location_mood_data(location)

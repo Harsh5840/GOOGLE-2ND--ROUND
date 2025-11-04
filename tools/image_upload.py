@@ -1,4 +1,3 @@
-import os
 import json
 import uuid
 from datetime import datetime
@@ -8,7 +7,6 @@ import base64
 from PIL import Image
 import io
 
-import vertexai
 from vertexai.generative_models import GenerativeModel, Part
 
 from shared.utils.logger import log_event

@@ -18,7 +18,7 @@ import datetime
 import json
 import logging
 import os
-from typing import Any, List, Dict
+from typing import Any
 
 import google.auth
 import vertexai
@@ -166,7 +166,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.local:
-        import asyncio
         from .agent import root_agent
         from google.adk.sessions import InMemorySessionService
         from google.adk.runners import Runner
