@@ -8,7 +8,9 @@ Run this script to test your setup before using the main application.
 
 import os
 import sys
+
 from dotenv import load_dotenv
+
 
 def test_environment_variables():
     """Test if environment variables are set correctly"""
@@ -85,7 +87,7 @@ def test_query_history():
     
     try:
         from tools.firestore import get_user_query_history, store_user_query_history
-        
+
         # Test storing a query
         test_user_id = "test_setup_user"
         test_query = "test query from setup script"
