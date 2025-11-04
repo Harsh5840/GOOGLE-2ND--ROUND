@@ -61,6 +61,10 @@ aiplatform.init(project=os.getenv("GCP_PROJECT_ID"), location=os.getenv("GCP_REG
 # FastAPI app setup
 app = FastAPI()
 
+# Include podcast router
+from routers.podcast_router import router as podcast_router
+app.include_router(podcast_router)
+
 # Static file serving for uploaded images
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 

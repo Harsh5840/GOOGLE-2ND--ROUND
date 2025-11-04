@@ -1,47 +1,42 @@
 #!/usr/bin/env python3
 """
-FastAPI server for News Podcast Agent
-Provides REST API endpoints for podcast generation and management.
+Podcast and News Router for Orchestrator
+Provides REST API endpoints for podcast generation, news, and TTS.
 """
 
 import uuid
 from datetime import datetime
 from typing import Optional, Dict, Any
 import logging
-logging.basicConfig(level=logging.INFO)
+import os
+import sys
+from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+# Add project root to Python path
+project_root = Path(__file__).parent.parent.parent.parent
+sys.path.insert(0, str(project_root))
+
+# Add news-podcast-agent directory to Python path (due to hyphen in directory name)
+news_agent_path = project_root / "news-podcast-agent"
+sys.path.insert(0, str(news_agent_path))
+
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse, JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from config import config
 from app.news_tools import synthesize_speech, fetch_local_news
 from app.podcast_wrapper import PodcastAgent
 from app.utils.files import get_output_dir
 
-# Initialize FastAPI app
-app = FastAPI(
-    title="News Podcast Agent API",
-    description="API for generating AI-powered news podcasts",
-    version="1.0.0"
-)
-
-# Add CORS middleware for frontend integration
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Configure this for production
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Create router
+router = APIRouter(prefix="/podcast", tags=["podcast"])
 
 # In-memory storage for job status (use Redis/database in production)
 job_status: Dict[str, Dict[str, Any]] = {}
 
 # Pydantic models for request/response
 class PodcastRequest(BaseModel):
-    city: str = Field(default=config.default_city, description="City name for local news")
+    city: str = Field(default="New York", description="City name for local news")
     duration_minutes: int = Field(default=5, ge=1, le=30, description="Podcast duration in minutes")
     voice: str = Field(default="en-US-Studio-Q", description="Gemini's modern TTS voice")
     speaking_rate: float = Field(default=1.0, ge=0.5, le=2.0, description="Speaking rate")
@@ -126,25 +121,24 @@ async def generate_podcast_async(job_id: str, city: str, duration_minutes: int, 
 
 # API Endpoints
 
-@app.get("/")
+@router.get("/")
 async def root():
-    logging.info("[API] Root endpoint called")
+    logging.info("[Podcast Router] Root endpoint called")
     """Root endpoint with API information."""
     return {
         "message": "News Podcast Agent API",
         "version": "1.0.0",
         "endpoints": {
-            "generate_podcast": "/api/v1/podcast/generate",
-            "job_status": "/api/v1/jobs/{job_id}",
-            "download_audio": "/api/v1/files/{filename}",
-            "text_to_speech": "/api/v1/tts"
+            "generate_podcast": "/podcast/api/v1/podcast/generate",
+            "job_status": "/podcast/api/v1/jobs/{job_id}",
+            "download_audio": "/podcast/api/v1/files/{filename}",
+            "text_to_speech": "/podcast/api/v1/tts"
         }
     }
 
-@app.post("/api/v1/podcast/generate", response_model=PodcastResponse)
+@router.post("/api/v1/podcast/generate", response_model=PodcastResponse)
 async def generate_podcast(request: PodcastRequest, background_tasks: BackgroundTasks):
-    logging.info(f"[API] /api/v1/podcast/generate called with city={request.city}, duration={request.duration_minutes}, voice={request.voice}, rate={request.speaking_rate}")
-    print(f"[DEBUG] Received podcast generation request: city={request.city}, duration={request.duration_minutes}, voice={request.voice}, rate={request.speaking_rate}")
+    logging.info(f"[Podcast Router] /api/v1/podcast/generate called with city={request.city}, duration={request.duration_minutes}, voice={request.voice}, rate={request.speaking_rate}")
     """Generate a news podcast for the specified city."""
     
     # Generate unique job ID
@@ -179,9 +173,9 @@ async def generate_podcast(request: PodcastRequest, background_tasks: Background
         message="Podcast generation started"
     )
 
-@app.get("/api/v1/jobs/{job_id}", response_model=JobStatus)
+@router.get("/api/v1/jobs/{job_id}", response_model=JobStatus)
 async def get_job_status(job_id: str):
-    logging.info(f"[API] /api/v1/jobs/{{job_id}} called for job_id={job_id}")
+    logging.info(f"[Podcast Router] /api/v1/jobs/{{job_id}} called for job_id={job_id}")
     """Get the status of a podcast generation job."""
     
     if job_id not in job_status:
@@ -189,26 +183,25 @@ async def get_job_status(job_id: str):
     
     return JobStatus(**job_status[job_id])
 
-@app.get("/api/v1/jobs")
+@router.get("/api/v1/jobs")
 async def list_jobs():
-    logging.info("[API] /api/v1/jobs called")
+    logging.info("[Podcast Router] /api/v1/jobs called")
     """List all jobs with their current status."""
     return {
         "jobs": list(job_status.values()),
         "total": len(job_status)
     }
 
-@app.get("/api/v1/files/{filename}")
+@router.get("/api/v1/files/{filename}")
 async def download_file(filename: str):
-    logging.info(f"[API] /api/v1/files/{{filename}} called for filename={filename}")
+    logging.info(f"[Podcast Router] /api/v1/files/{{filename}} called for filename={filename}")
     output_dir = get_output_dir()
     file_path = output_dir / filename
-    print(f"[DEBUG] Attempting to serve file: {file_path} (exists: {file_path.exists()}, size: {file_path.stat().st_size if file_path.exists() else 'N/A'})")
     if not file_path.exists():
-        logging.error(f"[API] File not found: {file_path}")
+        logging.error(f"[Podcast Router] File not found: {file_path}")
         raise HTTPException(status_code=404, detail="File not found")
     if file_path.stat().st_size == 0:
-        logging.error(f"[API] File is empty: {file_path}")
+        logging.error(f"[Podcast Router] File is empty: {file_path}")
         raise HTTPException(status_code=500, detail="File is empty (TTS generation may have failed)")
     return FileResponse(
         path=str(file_path),
@@ -216,9 +209,9 @@ async def download_file(filename: str):
         media_type="audio/mpeg"
     )
 
-@app.post("/api/v1/tts")
+@router.post("/api/v1/tts")
 async def text_to_speech(request: TTSRequest):
-    logging.info(f"[API] /api/v1/tts called with voice={request.voice}, rate={request.speaking_rate}")
+    logging.info(f"[Podcast Router] /api/v1/tts called with voice={request.voice}, rate={request.speaking_rate}")
     """Convert text to speech using Google TTS."""
     
     try:
@@ -238,15 +231,15 @@ async def text_to_speech(request: TTSRequest):
         return {
             "message": "Text converted to speech successfully",
             "filename": filename,
-            "download_url": f"/api/v1/files/{filename}"
+            "download_url": f"/podcast/api/v1/files/{filename}"
         }
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"TTS generation failed: {str(e)}")
 
-@app.get("/api/v1/news/{city}")
+@router.get("/api/v1/news/{city}")
 async def get_local_news(city: str, limit: int = 10):
-    logging.info(f"[API] /api/v1/news/{{city}} called for city={city}, limit={limit}")
+    logging.info(f"[Podcast Router] /api/v1/news/{{city}} called for city={city}, limit={limit}")
     """Get local news articles for a city."""
     
     try:
@@ -260,9 +253,9 @@ async def get_local_news(city: str, limit: int = 10):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch news: {str(e)}")
 
-@app.delete("/api/v1/jobs/{job_id}")
+@router.delete("/api/v1/jobs/{job_id}")
 async def delete_job(job_id: str):
-    logging.info(f"[API] /api/v1/jobs/{{job_id}} DELETE called for job_id={job_id}")
+    logging.info(f"[Podcast Router] /api/v1/jobs/{{job_id}} DELETE called for job_id={job_id}")
     """Delete a job and its associated files."""
     
     if job_id not in job_status:
@@ -281,31 +274,12 @@ async def delete_job(job_id: str):
     
     return {"message": "Job deleted successfully"}
 
-@app.get("/api/v1/health")
+@router.get("/api/v1/health")
 async def health_check():
-    logging.info("[API] /api/v1/health called")
+    logging.info("[Podcast Router] /api/v1/health called")
     """Health check endpoint."""
     return {
         "status": "healthy",
         "timestamp": datetime.now(),
         "version": "1.0.0"
     }
-
-# Error handlers
-@app.exception_handler(404)
-async def not_found_handler(request, exc):
-    return JSONResponse(
-        status_code=404,
-        content={"error": "Not found", "message": str(exc.detail)}
-    )
-
-@app.exception_handler(500)
-async def internal_error_handler(request, exc):
-    return JSONResponse(
-        status_code=500,
-        content={"error": "Internal server error", "message": "An unexpected error occurred"}
-    )
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=5001, reload=True)
