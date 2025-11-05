@@ -7,9 +7,9 @@ Provides a simple interface to the existing podcast agent functionality.
 from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 
-from app.agent import PodcastPipeline
-from app.tools_backup import fetch_local_news, synthesize_speech
-from app.utils.files import get_output_dir
+from .agent import PodcastPipeline
+from .tools_backup import fetch_local_news, synthesize_speech
+from .utils.files import get_output_dir
 import logging
 
 

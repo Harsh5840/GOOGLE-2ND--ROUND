@@ -1,7 +1,7 @@
 import os
 from typing import Dict, Any, List, Optional
 import googlemaps
-from shared.utils.logger import log_event
+from packages.shared.src.logger.logger import log_event
 import traceback
 from datetime import datetime
 
@@ -363,8 +363,8 @@ def get_location_mood_data(location: str) -> Dict[str, Any]:
     """
     try:
         # Import here to avoid circular imports
-        from shared.utils.mood import aggregate_mood
-        from tools.firestore import get_unified_data_from_firestore
+        from packages.shared.src.utils.mood import aggregate_mood
+        from .firestore import get_unified_data_from_firestore
         
         # Get unified data for the location (don't force refresh to avoid infinite loops)
         unified_data_list = get_unified_data_from_firestore(location, hours=24, force_refresh=False)

@@ -1,5 +1,5 @@
 import os
-from app.config import config
+from .config import config
 from typing import List, Dict
 import json
 import logging

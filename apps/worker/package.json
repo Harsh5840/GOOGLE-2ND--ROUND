@@ -1,0 +1,19 @@
+{
+  "name": "@city-project/worker",
+  "version": "1.0.0",
+  "description": "City Project Worker Service for Background Processing",
+  "main": "src/podcast/agent_engine_app.py",
+  "scripts": {
+    "dev": "python src/podcast/agent_engine_app.py",
+    "start": "python src/podcast/agent_engine_app.py",
+    "build": "echo 'No build step required for Python'",
+    "test": "python -m pytest",
+    "lint": "ruff check .",
+    "type-check": "mypy src/"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

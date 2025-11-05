@@ -20,18 +20,18 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import os
 from google.cloud import aiplatform
-from shared.utils.logger import log_event
+from packages.shared.src.logger.logger import log_event
 from typing import Optional, List, Dict, Any
 import json
 from fastapi import UploadFile, File
 from datetime import datetime
 
-from agents.agent_router import agent_router
-from agents.gemini_fallback_agent import run_gemini_fallback_agent
-from agents.intent_extractor.agent import extract_intent
-from tools.image_upload import upload_event_photo, get_all_event_photos, get_event_photo_by_id
-from tools.reddit import fetch_reddit_posts
-from tools.firestore import (
+from .agents.agent_router import agent_router
+from .agents.gemini_fallback_agent import run_gemini_fallback_agent
+from .agents.intent_extractor.agent import extract_intent
+from .tools.image_upload import upload_event_photo, get_all_event_photos, get_event_photo_by_id
+from .tools.reddit import fetch_reddit_posts
+from .tools.firestore import (
     create_or_update_user_profile,
     get_user_profile,
     get_user_default_location,
@@ -53,7 +53,7 @@ from tools.firestore import (
     refresh_unified_data_for_location,
     get_unified_data_sources_for_location
 )
-from shared.utils.user_photos import save_user_photo
+from packages.shared.src.utils.user_photos import save_user_photo
 
 # Initialize Google Cloud Vertex AI
 aiplatform.init(project=os.getenv("GCP_PROJECT_ID"), location=os.getenv("GCP_REGION"))
@@ -62,7 +62,7 @@ aiplatform.init(project=os.getenv("GCP_PROJECT_ID"), location=os.getenv("GCP_REG
 app = FastAPI()
 
 # Include podcast router
-from routers.podcast_router import router as podcast_router
+from .routers.podcast_router import router as podcast_router
 app.include_router(podcast_router)
 
 # Static file serving for uploaded images
@@ -131,7 +131,7 @@ def dispatch_tool(intent: str, entities: dict, query: str) -> tuple[bool, str, O
     if intent == "google_search" and "query" in entities:
         # Implement google search tool call
         try:
-            from tools.google_search import google_search # Corrected from search_google
+            from .tools.google_search import google_search # Corrected from search_google
             query = entities.get("query")
             log_event("Orchestrator", f"Calling google_search with query: {query!r}")
             results = google_search(query=query, num_results=5) # Corrected function call
@@ -148,7 +148,7 @@ def dispatch_tool(intent: str, entities: dict, query: str) -> tuple[bool, str, O
     elif intent == "best_route" and "origin" in entities and "destination" in entities:
         # Implement best route tool call
         try:
-            from tools.maps import get_best_route, display_locations_on_map
+            from .tools.maps import get_best_route, display_locations_on_map
             origin = entities.get("origin")
             destination = entities.get("destination")
             mode = entities.get("mode", "driving")
@@ -189,7 +189,7 @@ def dispatch_tool(intent: str, entities: dict, query: str) -> tuple[bool, str, O
     elif intent == "poi" and "location" in entities:
         # Implement must visit places tool call
         try:
-            from tools.maps import get_must_visit_places_nearby, display_locations_on_map
+            from .tools.maps import get_must_visit_places_nearby, display_locations_on_map
             location = entities.get("location")
             max_results = entities.get("max_results", 3)
             
@@ -229,7 +229,7 @@ def dispatch_tool(intent: str, entities: dict, query: str) -> tuple[bool, str, O
     elif intent == "history" or "query" in query.lower() and ("first" in query.lower() or "previous" in query.lower() or "last" in query.lower()):
         # Handle user queries related to history
         try:
-            from tools.firestore import get_user_query_history
+            from .tools.firestore import get_user_query_history
             # Extract user_id from entities or use a default
             user_id = entities.get("user_id", "default_user")
             history = get_user_query_history(user_id, limit=5)
@@ -251,7 +251,7 @@ def dispatch_tool(intent: str, entities: dict, query: str) -> tuple[bool, str, O
     elif intent == "fetch_firestore_reports":
         # Implement fetch_firestore_reports tool call
         try:
-            from tools.firestore import fetch_firestore_reports
+            from .tools.firestore import fetch_firestore_reports
             location = entities.get("location", "")
             topic = entities.get("topic", "")
             reply = fetch_firestore_reports(location, topic)
@@ -263,7 +263,7 @@ def dispatch_tool(intent: str, entities: dict, query: str) -> tuple[bool, str, O
     elif intent == "fetch_similar_user_queries":
         # Implement fetch_similar_user_queries tool call
         try:
-            from tools.firestore import fetch_similar_user_queries
+            from .tools.firestore import fetch_similar_user_queries
             user_id = entities.get("user_id", "")
             query = entities.get("query", "")
             reply = fetch_similar_user_queries(user_id, query)
@@ -295,7 +295,7 @@ async def chat_router(query: UserQuery):
         
         # Check Firestore first for cached Reddit data
         try:
-            from tools.firestore import get_unified_data_from_firestore
+            from .tools.firestore import get_unified_data_from_firestore
             log_event("Orchestrator", f"Checking Firestore for cached Reddit data for: {subreddit}")
             
             # Try to get cached Reddit data from Firestore
@@ -321,7 +321,7 @@ async def chat_router(query: UserQuery):
         
         # Store the result in Firestore for future use
         try:
-            from tools.firestore import store_unified_data
+            from .tools.firestore import store_unified_data
             posts_list = reply.split('\n')[1:] if '\n' in reply else [reply]  # Extract posts from reply
             store_unified_data(subreddit, "reddit", {
                 "posts": posts_list,
@@ -598,7 +598,7 @@ async def classify_photo_endpoint(
         image_data = await file.read()
         
         # Classify the photo using Gemini Vision
-        from tools.gemini_vision import classify_photo_with_gemini
+        from .tools.gemini_vision import classify_photo_with_gemini
         classification_result = await classify_photo_with_gemini(image_data, latitude, longitude)
         
         return {
@@ -635,7 +635,7 @@ async def submit_classified_report_endpoint(
         image_data = await file.read()
         
         # Submit to Firestore with classification data
-        from tools.firestore import submit_user_report
+        from .tools.firestore import submit_user_report
         report_result = submit_user_report(
             user_id=user_id,
             title=title,
@@ -676,7 +676,7 @@ async def submit_classified_report_endpoint(
 async def get_all_user_reports_endpoint(limit: int = 100):
     """Get all user reports for map display."""
     try:
-        from tools.firestore import get_all_user_reports
+        from .tools.firestore import get_all_user_reports
         reports = get_all_user_reports(limit)
         return reports
     except Exception as e:
@@ -687,7 +687,7 @@ async def get_all_user_reports_endpoint(limit: int = 100):
 async def get_report_image_endpoint(report_id: str):
     """Serve report image by ID."""
     try:
-        from tools.firestore import get_report_image
+        from .tools.firestore import get_report_image
         from fastapi.responses import Response
         
         image_data = get_report_image(report_id)
@@ -765,7 +765,7 @@ async def get_event_photo(photo_id: str):
 async def get_user_event_photos_endpoint(user_id: str, limit: int = 50):
     """Get all event photos uploaded by a specific user"""
     try:
-        from tools.firestore import get_user_event_photos
+        from .tools.firestore import get_user_event_photos
         photos = get_user_event_photos(user_id, limit)
         return {"photos": photos}
     except Exception as e:
@@ -781,7 +781,7 @@ async def get_location_event_photos_endpoint(
 ):
     """Get event photos within a radius of specified coordinates"""
     try:
-        from tools.firestore import get_location_event_photos
+        from .tools.firestore import get_location_event_photos
         photos = get_location_event_photos(latitude, longitude, radius_km, limit)
         return {"photos": photos}
     except Exception as e:
@@ -846,7 +846,7 @@ async def get_user_retention_analytics_endpoint(user_id: str):
 async def get_user_query_history_endpoint(user_id: str, limit: int = 20):
     """Get user's query history"""
     try:
-        from tools.firestore import get_user_query_history
+        from .tools.firestore import get_user_query_history
         history = get_user_query_history(user_id, limit)
         return {"user_id": user_id, "query_history": history, "count": len(history)}
     except Exception as e:
@@ -883,7 +883,7 @@ async def location_mood(
     """
     try:
         # Get mood data using the new maps functionality
-        from tools.maps import get_location_mood_data, get_must_visit_places_nearby
+        from .tools.maps import get_location_mood_data, get_must_visit_places_nearby
         
         # Get mood data for the location
         mood_result = get_location_mood_data(location)
@@ -908,7 +908,7 @@ async def location_mood(
         
         # Get user photos near the location
         try:
-            from tools.firestore import get_location_event_photos
+            from .tools.firestore import get_location_event_photos
             # Geocode location for lat/lng
             import googlemaps
             gmaps = googlemaps.Client(key=os.getenv("GOOGLE_MAPS_API_KEY"))
@@ -935,7 +935,7 @@ async def display_locations_endpoint(locations: List[Dict[str, Any]]):
     Display locations on the frontend map with mood data.
     """
     try:
-        from tools.maps import display_locations_on_map
+        from .tools.maps import display_locations_on_map
         result = display_locations_on_map(locations)
         return result
     except Exception as e:
@@ -952,7 +952,7 @@ async def best_route_endpoint(
     Get the best route between two locations with mood data.
     """
     try:
-        from tools.maps import get_best_route, display_locations_on_map
+        from .tools.maps import get_best_route, display_locations_on_map
         result = get_best_route(origin, destination, mode)
         
         if result["success"]:
@@ -974,7 +974,7 @@ async def must_visit_places_endpoint(
     Get must-visit places near a location with mood data.
     """
     try:
-        from tools.maps import get_must_visit_places_nearby, display_locations_on_map
+        from .tools.maps import get_must_visit_places_nearby, display_locations_on_map
         result = get_must_visit_places_nearby(location, max_results)
         
         if result["success"]:

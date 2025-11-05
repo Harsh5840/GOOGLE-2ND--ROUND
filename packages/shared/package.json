@@ -1,0 +1,17 @@
+{
+  "name": "@city-project/shared",
+  "version": "1.0.0",
+  "description": "Shared utilities and packages for City Project",
+  "main": "src/index.js",
+  "scripts": {
+    "build": "echo 'No build step required for shared utilities'",
+    "test": "python -m pytest",
+    "lint": "ruff check .",
+    "type-check": "mypy src/"
+  },
+  "dependencies": {},
+  "devDependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

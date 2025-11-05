@@ -1,6 +1,6 @@
 import asyncpraw
 import os
-from shared.utils.logger import log_event
+from packages.shared.src.logger.logger import log_event
 
 def normalize_subreddit(subreddit: str) -> str:
     s = subreddit.lower().replace(' ', '')

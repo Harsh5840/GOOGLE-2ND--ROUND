@@ -1,4 +1,4 @@
-from agents.gemini_fallback_agent import run_gemini_fallback_agent
+from .gemini_fallback_agent import run_gemini_fallback_agent
 
 async def agent_router(tool_name: str, args: dict, fallback: str = "gemini") -> str:
     """

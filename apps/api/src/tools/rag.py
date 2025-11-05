@@ -1,5 +1,5 @@
 from vertexai.generative_models import GenerativeModel
-from shared.utils.logger import log_event
+from packages.shared.src.logger.logger import log_event
 
 gemini = GenerativeModel("gemini-2.0-flash")
 

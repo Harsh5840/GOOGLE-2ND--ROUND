@@ -1,0 +1,10 @@
+# Shared Package Dependencies
+# Logging and utilities
+python-dotenv~=1.0.0
+
+# Data processing
+textblob
+
+# Development and testing
+pytest
+mypy

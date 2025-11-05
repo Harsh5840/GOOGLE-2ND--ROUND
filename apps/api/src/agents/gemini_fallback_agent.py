@@ -6,7 +6,7 @@ from google.adk.tools import google_search
 from google.adk.runners import Runner
 from google.genai import types
 import uuid
-from agents.session_service import session_service, COMMON_APP_NAME
+from .session_service import session_service, COMMON_APP_NAME
 
 def create_gemini_fallback_agent():
     return Agent(
@@ -32,7 +32,7 @@ async def run_gemini_fallback_agent(query: str, user_id: str = "testuser", sessi
                 if hasattr(part, 'text'):
                     result += part.text
     
-    from shared.utils.logger import log_event
+    from packages.shared.src.logger.logger import log_event
     log_event("GeminiFallback", f"Generated response for user {user_id}: {len(result)} characters")
     return result.strip()
 

@@ -2,7 +2,7 @@ import os
 from google.cloud import firestore
 from google.oauth2 import service_account
 from dotenv import load_dotenv
-from shared.utils.logger import log_event
+from packages.shared.src.logger.logger import log_event
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any
 import json
@@ -473,7 +473,7 @@ def load_unified_data_to_firestore(location: str, data_sources: List[str] = None
         # Load Reddit data
         if 'reddit' in data_sources:
             try:
-                from tools.reddit import fetch_reddit_posts
+                from .reddit import fetch_reddit_posts
                 import asyncio
                 
                 # Use location as subreddit name, normalize it for Reddit
@@ -510,7 +510,7 @@ def load_unified_data_to_firestore(location: str, data_sources: List[str] = None
         # Load Twitter data
         if 'twitter' in data_sources:
             try:
-                from tools.twitter import fetch_twitter_posts
+                from .twitter import fetch_twitter_posts
                 twitter_data = fetch_twitter_posts(location=location, topic="city events", limit=10)
                 if twitter_data:
                     store_unified_data(location, "twitter", {
@@ -527,7 +527,7 @@ def load_unified_data_to_firestore(location: str, data_sources: List[str] = None
         # Load News data
         if 'news' in data_sources:
             try:
-                from tools.news import fetch_city_news
+                from .news import fetch_city_news
                 news_data = fetch_city_news(city=location, limit=5)
                 if news_data:
                     store_unified_data(location, "news", {
@@ -544,7 +544,7 @@ def load_unified_data_to_firestore(location: str, data_sources: List[str] = None
         # Load Maps data
         if 'maps' in data_sources:
             try:
-                from tools.maps import get_must_visit_places_nearby
+                from .maps import get_must_visit_places_nearby
                 maps_data = get_must_visit_places_nearby(location, max_results=10)
                 if maps_data:
                     store_unified_data(location, "maps", {
@@ -561,7 +561,7 @@ def load_unified_data_to_firestore(location: str, data_sources: List[str] = None
         # Load RAG data (if available)
         if 'rag' in data_sources:
             try:
-                from tools.rag import query_rag_system
+                from .rag import query_rag_system
                 rag_data = query_rag_system(f"events and activities in {location}")
                 if rag_data:
                     store_unified_data(location, "rag", {

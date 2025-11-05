@@ -8,7 +8,7 @@ from typing import Dict, Any
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
 import os
-from shared.utils.logger import log_event
+from packages.shared.src.logger.logger import log_event
 
 # Configure Gemini API
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))

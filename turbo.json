@@ -1,6 +1,25 @@
 {
   "$schema": "https://turborepo.org/schema.json",
   "pipeline": {
-    "orchestrator": ["intent_extractor", "tool_caller", "rag_search", "llm_response"]
-  }
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".next/**", "build/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {},
+    "test": {},
+    "type-check": {},
+    "clean": {
+      "cache": false
+    }
+  },
+  "globalDependencies": [
+    "package.json",
+    "pnpm-lock.yaml",
+    "requirements.txt",
+    "pyproject.toml"
+  ]
 }

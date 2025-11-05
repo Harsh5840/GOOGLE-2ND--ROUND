@@ -9,8 +9,8 @@ import io
 
 from vertexai.generative_models import GenerativeModel, Part
 
-from shared.utils.logger import log_event
-from tools.firestore import store_event_photo_firestore, store_user_location
+from packages.shared.src.logger.logger import log_event
+from .firestore import store_event_photo_firestore, store_user_location
 
 # Create uploads directory if it doesn't exist
 UPLOADS_DIR = Path("uploads/event_photos")
@@ -179,7 +179,7 @@ def upload_event_photo(
 def get_all_event_photos() -> List[Dict]:
     """Get all uploaded event photos with their metadata from Firestore"""
     try:
-        from tools.firestore import db, EVENT_PHOTOS_COLLECTION
+        from .firestore import db, EVENT_PHOTOS_COLLECTION
         from google.cloud import firestore
         
         # Get photos from Firestore
@@ -210,7 +210,7 @@ def get_all_event_photos() -> List[Dict]:
 def get_event_photo_by_id(photo_id: str) -> Optional[Dict]:
     """Get a specific event photo by ID from Firestore"""
     try:
-        from tools.firestore import db, EVENT_PHOTOS_COLLECTION
+        from .firestore import db, EVENT_PHOTOS_COLLECTION
         
         # Get photo from Firestore
         photo_ref = db.collection(EVENT_PHOTOS_COLLECTION).document(photo_id)

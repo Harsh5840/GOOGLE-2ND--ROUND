@@ -29,7 +29,7 @@ from google.genai import types as genai_types
 from pydantic import BaseModel, Field
 
 from app.config import config
-from app.news_tools import local_news_tool, text_to_speech_tool
+from .news_tools import local_news_tool, text_to_speech_tool
 
 
 # --- Structured Output Models ---

@@ -1,0 +1,29 @@
+# Worker Service Dependencies
+# Google Cloud and AI Platform
+google-adk~=1.6.0
+google-cloud-aiplatform[evaluation,agent-engines]~=1.103.0
+google-cloud-texttospeech
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+vertexai
+
+# News and social media APIs
+newsapi-python~=0.2.6
+asyncpraw
+tweepy
+
+# HTTP client
+requests
+httpx>=0.24.0
+
+# Environment and configuration
+python-dotenv~=1.0.0
+
+# Development and testing
+pytest
+pytest-asyncio
+
+# Additional utilities
+pathlib
+datetime

@@ -1,6 +1,6 @@
 import requests
 from dotenv import load_dotenv
-from shared.utils.logger import log_event
+from packages.shared.src.logger.logger import log_event
 
 load_dotenv()
 
