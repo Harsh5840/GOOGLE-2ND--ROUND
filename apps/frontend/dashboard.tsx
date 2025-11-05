@@ -3,6 +3,7 @@
 import type React from "react"
 
 import { useState, useEffect, useRef } from "react"
+import { motion } from "framer-motion"
 import {
   Bell,
   Search,
@@ -626,29 +627,63 @@ export default function CityScapeDashboard({
 
   if (isLoading) {
     return (
-      <div
-        className={`h-screen flex items-center justify-center ${
-          isDarkMode
-            ? "bg-gradient-to-br from-gray-900 via-blue-900 to-indigo-900"
-            : "bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100"
-        }`}
-      >
-        <div className="text-center">
-          <div className="relative">
-            <div className="w-32 h-32 border-8 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-8"></div>
-            <div className="absolute inset-0 w-32 h-32 border-8 border-transparent border-r-purple-600 rounded-full animate-spin mx-auto animation-delay-150"></div>
+      <div className="h-screen flex items-center justify-center bg-gradient-cosmic-animated relative overflow-hidden">
+        {/* Animated background particles */}
+        <div className="particles absolute inset-0"></div>
+
+        <div className="text-center relative z-10">
+          <div className="relative mb-8">
+            {/* Morphing logo container */}
+            <div className="w-32 h-32 mx-auto mb-6 relative">
+              <div className="absolute inset-0 bg-gradient-primary rounded-full animate-pulse opacity-20"></div>
+              <div className="absolute inset-2 bg-gradient-secondary rounded-full animate-pulse opacity-40 animation-delay-100"></div>
+              <div className="absolute inset-4 bg-gradient-accent rounded-full animate-pulse opacity-60 animation-delay-200"></div>
+              <div className="absolute inset-6 glass-strong rounded-full flex items-center justify-center">
+                <Sparkles className="w-12 h-12 text-white animate-float" />
+              </div>
+            </div>
+
+            {/* Enhanced loading spinner */}
+            <div className="relative">
+              <div className="w-32 h-32 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-8 glow-primary"></div>
+              <div className="absolute inset-0 w-32 h-32 border-4 border-transparent border-r-blue-400 rounded-full animate-spin mx-auto animation-delay-150"></div>
+              <div className="absolute inset-0 w-32 h-32 border-4 border-transparent border-b-purple-400 rounded-full animate-spin mx-auto animation-delay-300"></div>
+            </div>
           </div>
-          <div className="space-y-4">
-            <h2 className="text-3xl font-black bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent animate-pulse">
-              Urban Pulse
-            </h2>
-            <p className={`text-lg font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"} animate-pulse`}>
-              Initializing City Intelligence Platform...
-            </p>
-            <div className="flex justify-center space-x-2 mt-6">
-              <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce"></div>
-              <div className="w-3 h-3 bg-purple-600 rounded-full animate-bounce animation-delay-100"></div>
-              <div className="w-3 h-3 bg-indigo-600 rounded-full animate-bounce animation-delay-200"></div>
+
+          <div className="space-y-6">
+            {/* Animated title with glassmorphism */}
+            <div className="glass px-8 py-4 rounded-2xl">
+              <h2 className="text-4xl font-black text-gradient-primary animate-gradient mb-2">
+                Urban Pulse
+              </h2>
+              <p className="text-lg font-medium text-white/90 animate-fadeInUp">
+                Initializing City Intelligence Platform...
+              </p>
+            </div>
+
+            {/* Floating status indicators */}
+            <div className="flex justify-center space-x-4 mt-8">
+              <div className="glass-subtle px-4 py-2 rounded-full flex items-center space-x-2 animate-float">
+                <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-white/80 text-sm">AI Systems</span>
+              </div>
+              <div className="glass-subtle px-4 py-2 rounded-full flex items-center space-x-2 animate-float animation-delay-200">
+                <div className="w-3 h-3 bg-blue-400 rounded-full animate-pulse"></div>
+                <span className="text-white/80 text-sm">Map Data</span>
+              </div>
+              <div className="glass-subtle px-4 py-2 rounded-full flex items-center space-x-2 animate-float animation-delay-400">
+                <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse"></div>
+                <span className="text-white/80 text-sm">User Profile</span>
+              </div>
+            </div>
+
+            {/* Progress bar */}
+            <div className="glass px-6 py-3 rounded-full max-w-xs mx-auto">
+              <div className="w-full bg-white/20 rounded-full h-2 overflow-hidden">
+                <div className="h-full bg-gradient-primary rounded-full animate-pulse" style={{width: '70%'}}></div>
+              </div>
+              <p className="text-xs text-white/70 mt-2">Loading city insights...</p>
             </div>
           </div>
         </div>
@@ -657,13 +692,9 @@ export default function CityScapeDashboard({
   }
 
   return (
-    <div
-      className={`h-screen flex flex-col transition-all duration-500 ${
-        isDarkMode
-          ? "bg-gradient-to-br from-gray-900 via-blue-900 to-indigo-900"
-          : "bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100"
-      }`}
-    >
+    <div className="h-screen flex flex-col bg-gradient-cosmic-animated relative overflow-hidden">
+      {/* Animated background particles */}
+      <div className="particles absolute inset-0 pointer-events-none"></div>
 
       {/* Enhanced Header */}
       <Header
@@ -687,54 +718,56 @@ export default function CityScapeDashboard({
 
         {/* Mobile Sidebar Overlay */}
         {isMobile && sidebarOpen && (
-          <div
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
 
         {/* Enhanced Left Sidebar with Social Feed */}
-        <Sidebar
-          isMobile={isMobile}
-          sidebarOpen={sidebarOpen}
-          setSidebarOpen={setSidebarOpen}
-          isDarkMode={isDarkMode}
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          activeFilters={activeFilters}
-          toggleFilter={toggleFilter}
-          filteredEvents={filteredEvents}
-          handleEventSelect={handleEventSelect}
-          mobileChatExpanded={mobileChatExpanded}
-        />
+        <motion.div
+          initial={{ x: -300, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+        >
+          <Sidebar
+            isMobile={isMobile}
+            sidebarOpen={sidebarOpen}
+            setSidebarOpen={setSidebarOpen}
+            isDarkMode={isDarkMode}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            activeFilters={activeFilters}
+            toggleFilter={toggleFilter}
+            filteredEvents={filteredEvents}
+            handleEventSelect={handleEventSelect}
+            mobileChatExpanded={mobileChatExpanded}
+          />
+        </motion.div>
 
         {/* Main Map Area - Center Focus */}
-        <div className={`flex-1 p-2 md:p-4 lg:p-8 ${isMobile && mobileChatExpanded ? "pb-80" : ""}`}>
-          <div
-            className={`h-full backdrop-blur-xl rounded-2xl md:rounded-3xl border shadow-2xl overflow-hidden relative transition-all duration-500 ${
-              isDarkMode
-                ? "bg-gray-900/90 border-gray-600/30 shadow-blue-900/40"
-                : "bg-white/70 border-white/30 shadow-blue-500/10"
-            }`}
-            style={{
-              // Mobile performance optimizations
-              willChange: 'transform',
-              transform: 'translateZ(0)', // Force hardware acceleration
-            }}
-          >
+        <motion.div
+          className={`flex-1 p-2 md:p-4 lg:p-8 ${isMobile && mobileChatExpanded ? "pb-80" : ""}`}
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
+        >
+          <div className="h-full glass-strong rounded-2xl md:rounded-3xl border shadow-2xl overflow-hidden relative transition-all duration-500 card-modern group">
             {/* Enhanced Map Controls */}
-            <div className="absolute top-4 md:top-6 left-4 md:left-6 z-10">
-              <Badge
-                className={`backdrop-blur-sm border px-3 md:px-4 py-2 shadow-lg font-semibold transition-all duration-300 hover:scale-105 text-xs md:text-sm ${
-                  isDarkMode
-                    ? "bg-gray-800/90 text-gray-200 border-gray-600/30"
-                    : "bg-white/90 text-gray-700 border-white/40"
-                }`}
-              >
-                <Activity className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2 animate-pulse" />
+            <motion.div
+              className="absolute top-4 md:top-6 left-4 md:left-6 z-10"
+              initial={{ y: -20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.8, duration: 0.4 }}
+            >
+              <div className="glass px-3 md:px-4 py-2 shadow-lg font-semibold transition-all duration-300 hover:scale-105 text-xs md:text-sm text-white border border-white/20">
+                <Activity className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2 animate-pulse text-blue-300" />
                 {filteredEvents.length} events visible
-              </Badge>
-            </div>
+              </div>
+            </motion.div>
 
             <GoogleMap
               events={filteredEvents}
@@ -746,24 +779,30 @@ export default function CityScapeDashboard({
               userReports={userReports}
               loadingReports={loadingReports}
             />
-            
-            {/* Floating Camera Icon for User Reports */}
-            <Button
+
+            {/* Enhanced Floating Camera Button */}
+            <motion.button
               onClick={() => setShowReportModal(true)}
-              className={`absolute bottom-4 md:bottom-6 right-4 md:right-6 z-20 w-12 h-12 md:w-14 md:h-14 rounded-full shadow-2xl transition-all duration-300 hover:scale-110 active:scale-95 ${
-                isDarkMode
-                  ? "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-900/50"
-                  : "bg-blue-500 hover:bg-blue-600 text-white shadow-blue-500/30"
-              }`}
+              className="absolute bottom-4 md:bottom-6 right-4 md:right-6 z-20 w-12 h-12 md:w-14 md:h-14 glass-strong rounded-full shadow-2xl transition-all duration-300 hover:scale-110 active:scale-95 btn-modern glow-primary group"
               title="Report an Event"
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ delay: 1, duration: 0.5, type: "spring", stiffness: 200 }}
+              whileHover={{ scale: 1.1, rotate: 5 }}
+              whileTap={{ scale: 0.95 }}
             >
-              <Camera className="w-5 h-5 md:w-6 md:h-6" />
-            </Button>
+              <Camera className="w-5 h-5 md:w-6 md:h-6 text-white group-hover:text-blue-200 transition-colors" />
+            </motion.button>
           </div>
-        </div>
+        </motion.div>
 
         {/* Fixed-Width Chat Panel */}
-        <div className={`${rightPanelCollapsed ? 'w-0' : 'w-80'} transition-all duration-300 flex-shrink-0 border-l ${isDarkMode ? 'border-gray-600' : 'border-gray-200'}`}>
+        <motion.div
+          className={`${rightPanelCollapsed ? 'w-0' : 'w-80'} transition-all duration-300 flex-shrink-0 border-l ${isDarkMode ? 'border-gray-600' : 'border-gray-200'}`}
+          initial={{ x: 300, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.3, ease: "easeOut" }}
+        >
           <Chat
             isDarkMode={isDarkMode}
             rightPanelCollapsed={rightPanelCollapsed}
@@ -775,7 +814,7 @@ export default function CityScapeDashboard({
             handleSendMessage={handleSendMessage}
             chatMessagesRef={chatMessagesRef}
           />
-        </div>
+        </motion.div>
       </div>
 
       {/* Enhanced Report Modal */}

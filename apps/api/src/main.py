@@ -3,8 +3,10 @@ import sys
 from pathlib import Path
 
 # Add project root to Python path to avoid import conflicts
-project_root = Path(__file__).parent.parent.parent
+project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
+print(f"Project root added to path: {project_root}")
+print(f"Current sys.path: {sys.path}")
 
 from dotenv import load_dotenv
 load_dotenv()
