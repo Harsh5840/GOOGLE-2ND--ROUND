@@ -5,8 +5,6 @@ from pathlib import Path
 # Add project root to Python path to avoid import conflicts
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root))
-print(f"Project root added to path: {project_root}")
-print(f"Current sys.path: {sys.path}")
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -64,8 +62,8 @@ aiplatform.init(project=os.getenv("GCP_PROJECT_ID"), location=os.getenv("GCP_REG
 app = FastAPI()
 
 # Include podcast router
-from .routers.podcast_router import router as podcast_router
-app.include_router(podcast_router)
+# from .routers.podcast_router import router as podcast_router
+# app.include_router(podcast_router)
 
 # Static file serving for uploaded images
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
@@ -992,4 +990,4 @@ async def must_visit_places_endpoint(
 if __name__ == "__main__":
     import uvicorn
     log_event("Orchestrator", "Starting FastAPI server...")
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

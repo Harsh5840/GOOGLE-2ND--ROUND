@@ -54,7 +54,7 @@ const EventCard: React.FC<EventCardProps> = ({
       onClick={() => onSelect(event)}
     >
       {/* Animated background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-purple-500/10 to-pink-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/8 via-sky-400/8 to-pink-200/8 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
 
       {/* Content */}
       <div className="relative z-10">

@@ -235,7 +235,7 @@ export default function EventPhotosDashboard() {
           
           <Dialog open={isUploadDialogOpen} onOpenChange={setIsUploadDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white">
+              <Button className="bg-gradient-to-r from-sky-600 to-teal-600 hover:from-sky-700 hover:to-teal-700 text-white">
                 <Plus className="w-4 h-4 mr-2" />
                 Upload Photo
               </Button>
@@ -345,7 +345,7 @@ export default function EventPhotosDashboard() {
                   <Button
                     onClick={handleSubmitUpload}
                     disabled={isLoading || !uploadForm.image}
-                    className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600"
+                    className="flex-1 bg-gradient-to-r from-sky-600 to-teal-600"
                   >
                     {isLoading ? 'Uploading...' : 'Upload Photo'}
                   </Button>

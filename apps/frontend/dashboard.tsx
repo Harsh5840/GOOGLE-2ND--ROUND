@@ -647,7 +647,7 @@ export default function CityScapeDashboard({
             <div className="relative">
               <div className="w-32 h-32 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-8 glow-primary"></div>
               <div className="absolute inset-0 w-32 h-32 border-4 border-transparent border-r-blue-400 rounded-full animate-spin mx-auto animation-delay-150"></div>
-              <div className="absolute inset-0 w-32 h-32 border-4 border-transparent border-b-purple-400 rounded-full animate-spin mx-auto animation-delay-300"></div>
+              <div className="absolute inset-0 w-32 h-32 border-4 border-transparent border-b-slate-300 rounded-full animate-spin mx-auto animation-delay-300"></div>
             </div>
           </div>
 
@@ -672,8 +672,8 @@ export default function CityScapeDashboard({
                 <div className="w-3 h-3 bg-blue-400 rounded-full animate-pulse"></div>
                 <span className="text-white/80 text-sm">Map Data</span>
               </div>
-              <div className="glass-subtle px-4 py-2 rounded-full flex items-center space-x-2 animate-float animation-delay-400">
-                <div className="w-3 h-3 bg-purple-400 rounded-full animate-pulse"></div>
+                <div className="glass-subtle px-4 py-2 rounded-full flex items-center space-x-2 animate-float animation-delay-400">
+                <div className="w-3 h-3 bg-slate-400 rounded-full animate-pulse"></div>
                 <span className="text-white/80 text-sm">User Profile</span>
               </div>
             </div>

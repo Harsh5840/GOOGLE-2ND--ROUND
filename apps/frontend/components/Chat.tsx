@@ -105,7 +105,7 @@ const Chat: React.FC<ChatProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <GripVertical className={`w-4 h-4 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`} />
-              <div className="w-6 h-6 bg-gradient-to-br from-purple-500 via-pink-500 to-indigo-500 rounded-md flex items-center justify-center">
+              <div className="w-6 h-6 bg-gradient-to-br from-sky-500 via-emerald-400 to-sky-600 rounded-md flex items-center justify-center">
                 <Bot className="w-4 h-4 text-white" />
               </div>
               <div>
@@ -186,7 +186,7 @@ const Chat: React.FC<ChatProps> = ({
       {/* Chat Header */}
       <div className={`p-4 border-b ${isDarkMode ? "border-gray-600" : "border-gray-200"}`}>
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-gradient-to-br from-purple-500 via-pink-500 to-indigo-500 rounded-lg flex items-center justify-center">
+          <div className="w-8 h-8 bg-gradient-to-br from-sky-500 via-emerald-400 to-sky-600 rounded-lg flex items-center justify-center">
             <Bot className="w-5 h-5 text-white" />
           </div>
           <div>

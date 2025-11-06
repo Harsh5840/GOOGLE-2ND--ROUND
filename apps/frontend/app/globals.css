@@ -26,12 +26,13 @@
     --radius: 0.5rem;
 
     /* Modern gradient variables */
-    --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    --gradient-accent: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-    --gradient-sunset: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-    --gradient-ocean: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-    --gradient-cosmic: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  /* Neutral/minimalistic gradients (no purple) */
+  --gradient-primary: linear-gradient(135deg, #0ea5a4 0%, #0369a1 100%); /* teal -> blue */
+  --gradient-secondary: linear-gradient(135deg, #e6f5f4 0%, #dbeafe 100%); /* subtle light */
+  --gradient-accent: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%); /* cyan/teal */
+  --gradient-sunset: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); /* warm neutral */
+  --gradient-ocean: linear-gradient(135deg, #a8edea 0%, #d1fae5 100%);
+  --gradient-cosmic: linear-gradient(135deg, #e6f5f4 0%, #cce7f8 100%);
 
     /* Glassmorphism variables */
     --glass-bg: rgba(255, 255, 255, 0.1);
@@ -346,29 +347,12 @@
 }
 
 /* Gradient Backgrounds */
-.bg-gradient-primary {
-  background: var(--gradient-primary);
-}
-
-.bg-gradient-secondary {
-  background: var(--gradient-secondary);
-}
-
-.bg-gradient-accent {
-  background: var(--gradient-accent);
-}
-
-.bg-gradient-sunset {
-  background: var(--gradient-sunset);
-}
-
-.bg-gradient-ocean {
-  background: var(--gradient-ocean);
-}
-
-.bg-gradient-cosmic {
-  background: var(--gradient-cosmic);
-}
+.bg-gradient-primary { background: var(--gradient-primary); }
+.bg-gradient-secondary { background: var(--gradient-secondary); }
+.bg-gradient-accent { background: var(--gradient-accent); }
+.bg-gradient-sunset { background: var(--gradient-sunset); }
+.bg-gradient-ocean { background: var(--gradient-ocean); }
+.bg-gradient-cosmic { background: var(--gradient-cosmic); }
 
 /* Animated Gradient Backgrounds */
 .bg-gradient-primary-animated {
@@ -408,17 +392,9 @@
 }
 
 /* Glow Effects */
-.glow-primary {
-  box-shadow: 0 0 20px rgba(102, 126, 234, 0.3);
-}
-
-.glow-secondary {
-  box-shadow: 0 0 20px rgba(240, 147, 251, 0.3);
-}
-
-.glow-accent {
-  box-shadow: 0 0 20px rgba(79, 172, 254, 0.3);
-}
+.glow-primary { box-shadow: 0 0 20px rgba(6, 182, 212, 0.18); }
+.glow-secondary { box-shadow: 0 0 20px rgba(8, 145, 178, 0.12); }
+.glow-accent { box-shadow: 0 0 20px rgba(59, 130, 246, 0.12); }
 
 /* Modern Button Effects */
 .btn-modern {

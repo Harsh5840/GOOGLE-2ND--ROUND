@@ -24,9 +24,9 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
-from app.news_tools import synthesize_speech, fetch_local_news
-from app.podcast_wrapper import PodcastAgent
-from app.utils.files import get_output_dir
+from apps.worker.src.podcast.news_tools import synthesize_speech, fetch_local_news
+from apps.worker.src.podcast.podcast_wrapper import PodcastAgent
+from apps.worker.src.podcast.utils.files import get_output_dir
 
 # Create router
 router = APIRouter(prefix="/podcast", tags=["podcast"])

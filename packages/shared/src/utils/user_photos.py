@@ -1,9 +1,9 @@
 import os
 from google.cloud import storage
-from tools.firestore import db
+from apps.api.src.tools.firestore import db
 from uuid import uuid4
 from datetime import datetime
-from shared.utils.logger import log_event
+from packages.shared.src.logger.logger import log_event
 from typing import Optional, List
 
 USER_PHOTO_BUCKET = os.getenv("USER_PHOTO_BUCKET") or "user-photo-bucket"
