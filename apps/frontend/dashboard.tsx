@@ -337,6 +337,8 @@ export default function CityScapeDashboard({
         setUserReports(reports)
       } catch (error) {
         console.error('Error fetching user reports:', error)
+        // Don't show error to user, just log it - dashboard works without API
+        setUserReports([])
       } finally {
         setLoadingReports(false)
       }
@@ -370,16 +372,23 @@ export default function CityScapeDashboard({
             async (position) => {
               const { latitude, longitude } = position.coords
               
-              // Reverse geocode to get city name
+              // Reverse geocode to get city name using Google Maps Geocoding API
               try {
+                const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || 'AIzaSyBywJoW9lJckVLZYtxgrPC0hZhnNDmRqVU'
                 const response = await fetch(
-                  `https://api.opencagedata.com/geocode/v1/json?q=${latitude}+${longitude}&key=YOUR_API_KEY&limit=1`
+                  `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}`
                 )
                 const data = await response.json()
-                const city = data.results[0]?.components?.city || 
-                           data.results[0]?.components?.town || 
-                           data.results[0]?.components?.village || 
-                           "Current Location"
+                
+                // Extract city from address components
+                let city = "Current Location"
+                if (data.results && data.results.length > 0) {
+                  const addressComponents = data.results[0].address_components
+                  const cityComponent = addressComponents.find((comp: any) => 
+                    comp.types.includes('locality') || comp.types.includes('administrative_area_level_2')
+                  )
+                  city = cityComponent?.long_name || "Current Location"
+                }
                 
                 setCurrentCity(city) // Store detected city for chatbot
                 const locationData = await getLocationMoodWithDisplay(city)
@@ -389,18 +398,16 @@ export default function CityScapeDashboard({
                 console.error('Error getting city name:', error)
                 // Fallback to default location
                 setCurrentCity("Bangalore") // Store fallback city for chatbot
-                const locationData = await getLocationMoodWithDisplay("Bangalore")
-                setLocationMood(locationData)
                 setMoodLoading(false)
+                // Don't try to fetch mood data if API is down
               }
             },
             async (error) => {
               console.error('Geolocation error:', error)
               // Fallback to default location
               setCurrentCity("Bangalore") // Store fallback city for chatbot
-              const locationData = await getLocationMoodWithDisplay("Bangalore")
-              setLocationMood(locationData)
               setMoodLoading(false)
+              // Don't try to fetch mood data if API is down
             },
             {
               enableHighAccuracy: true,
@@ -411,9 +418,8 @@ export default function CityScapeDashboard({
         } else {
           // Geolocation not supported, use default
           setCurrentCity("Bangalore") // Store fallback city for chatbot
-          const locationData = await getLocationMoodWithDisplay("Bangalore")
-          setLocationMood(locationData)
           setMoodLoading(false)
+          // Don't try to fetch mood data if API is down
         }
       } catch (error) {
         console.error('Location detection error:', error)

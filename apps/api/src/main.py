@@ -16,6 +16,7 @@ vertexai.init(
 )
 
 from fastapi import FastAPI, HTTPException, Form, Query
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import os
@@ -60,6 +61,20 @@ aiplatform.init(project=os.getenv("GCP_PROJECT_ID"), location=os.getenv("GCP_REG
 
 # FastAPI app setup
 app = FastAPI()
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:3000", 
+        "http://127.0.0.1:3000",
+        "http://localhost:3001", 
+        "http://127.0.0.1:3001"
+    ],  # Frontend origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
+)
 
 # Include podcast router
 # from .routers.podcast_router import router as podcast_router

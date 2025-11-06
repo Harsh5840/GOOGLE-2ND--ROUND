@@ -13,9 +13,10 @@ import {
   MessageCircle,
   TrendingUp,
   Globe,
-  Zap
+  Zap,
+  AlertCircle
 } from 'lucide-react'
-import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth'
+import { signInWithPopup, signInWithRedirect, GoogleAuthProvider } from 'firebase/auth'
 import { auth } from '../lib/firebase'
 
 interface GoogleLoginProps {
@@ -27,28 +28,51 @@ export default function GoogleLogin({ onLoginSuccess, isDarkMode = false }: Goog
   const [isLoading, setIsLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [showEmailLogin, setShowEmailLogin] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleGoogleLogin = async () => {
     setIsLoading(true)
+    setError(null)
     
     try {
       const provider = new GoogleAuthProvider()
       provider.addScope('profile')
       provider.addScope('email')
       
-      const result = await signInWithPopup(auth, provider)
-      console.log('Google login successful:', result.user.email)
-      
-      // Notify caller about successful login so the page can redirect if desired
       try {
-        if (onLoginSuccess) onLoginSuccess(result.user)
-      } catch (err) {
-        console.warn('onLoginSuccess handler error:', err)
+        // Try popup first
+        const result = await signInWithPopup(auth, provider)
+        console.log('Google login successful:', result.user.email)
+        
+        // Notify caller about successful login so the page can redirect if desired
+        try {
+          if (onLoginSuccess) onLoginSuccess(result.user)
+        } catch (err) {
+          console.warn('onLoginSuccess handler error:', err)
+        }
+      } catch (popupError: any) {
+        // If popup is blocked, fall back to redirect
+        if (popupError.code === 'auth/popup-blocked') {
+          console.log('Popup blocked, using redirect flow...')
+          setError('Popup blocked. Redirecting to Google sign-in...')
+          // Use redirect flow instead
+          await signInWithRedirect(auth, provider)
+          // Note: After redirect completes, user will return to the app and 
+          // AuthenticatedApp will handle the auth state change
+        } else {
+          throw popupError
+        }
       }
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Google login error:', error)
-      // You could add error state handling here
+      if (error.code === 'auth/popup-closed-by-user') {
+        setError('Sign-in was cancelled. Please try again.')
+      } else if (error.code === 'auth/popup-blocked') {
+        setError('Please allow popups for this site or click again to use redirect.')
+      } else {
+        setError('Failed to sign in. Please try again.')
+      }
     } finally {
       setIsLoading(false)
     }
@@ -133,6 +157,26 @@ export default function GoogleLogin({ onLoginSuccess, isDarkMode = false }: Goog
         {/* Login Options */}
         {!showEmailLogin ? (
           <div className="space-y-4">
+            {/* Error Message */}
+            {error && (
+              <div className={`p-4 rounded-lg border flex items-start gap-3 ${
+                isDarkMode 
+                  ? 'bg-red-900/20 border-red-800/30 text-red-200'
+                  : 'bg-red-50 border-red-200 text-red-700'
+              }`}>
+                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <div className="flex-1 text-sm">
+                  <p className="font-semibold mb-1">Sign-in Issue</p>
+                  <p>{error}</p>
+                  {error.includes('popup') && (
+                    <p className="mt-2 text-xs opacity-80">
+                      Tip: Enable popups in your browser settings or try clicking the button again.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
             <Button
               onClick={handleGoogleLogin}
               disabled={isLoading}
