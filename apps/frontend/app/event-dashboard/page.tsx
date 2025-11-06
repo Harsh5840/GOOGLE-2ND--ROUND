@@ -1,8 +1,7 @@
 "use client"
 
-import EventPhotosDashboard from "../../components/EventPhotosDashboard"
-
+import CityScapeDashboard from "../../dashboard"
 
 export default function EventDashboardPage() {
-  return <EventPhotosDashboard />
-} 
+  return <CityScapeDashboard isDarkMode={false} setIsDarkMode={() => {}} />
+}

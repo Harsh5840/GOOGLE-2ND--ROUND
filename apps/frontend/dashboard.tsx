@@ -655,7 +655,7 @@ export default function CityScapeDashboard({
             {/* Animated title with glassmorphism */}
             <div className="glass px-8 py-4 rounded-2xl">
               <h2 className="text-4xl font-black text-gradient-primary animate-gradient mb-2">
-                Urban Pulse
+                CityScape
               </h2>
               <p className="text-lg font-medium text-white/90 animate-fadeInUp">
                 Initializing City Intelligence Platform...

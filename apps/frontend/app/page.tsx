@@ -7,7 +7,7 @@ export default function Page() {
     <main className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-800">
       <div className="max-w-2xl mx-auto p-8">
         <div className="text-center space-y-6">
-          <h1 className="text-4xl font-extrabold">Urban Pulse</h1>
+          <h1 className="text-4xl font-extrabold">CityScape</h1>
           <p className="text-slate-600">A minimal, modern city intelligence dashboard.</p>
 
           <div className="flex items-center justify-center gap-4 mt-6">

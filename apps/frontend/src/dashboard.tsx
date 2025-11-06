@@ -640,7 +640,7 @@ export default function CityScapeDashboard({
           </div>
           <div className="space-y-4">
             <h2 className="text-3xl font-black bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent animate-pulse">
-              Urban Pulse
+              CityScape
             </h2>
             <p className={`text-lg font-medium ${isDarkMode ? "text-gray-300" : "text-gray-600"} animate-pulse`}>
               Initializing City Intelligence Platform...

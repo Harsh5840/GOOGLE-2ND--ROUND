@@ -39,8 +39,12 @@ export default function GoogleLogin({ onLoginSuccess, isDarkMode = false }: Goog
       const result = await signInWithPopup(auth, provider)
       console.log('Google login successful:', result.user.email)
       
-      // The AuthenticatedApp component will handle the auth state change
-      // and redirect to onboarding or dashboard automatically
+      // Notify caller about successful login so the page can redirect if desired
+      try {
+        if (onLoginSuccess) onLoginSuccess(result.user)
+      } catch (err) {
+        console.warn('onLoginSuccess handler error:', err)
+      }
       
     } catch (error) {
       console.error('Google login error:', error)
